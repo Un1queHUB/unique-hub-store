@@ -167,7 +167,6 @@
     "tag": "ส่งออโต้",
     "desc": "จัดส่งข้อมูลอัตโนมัติ 24 ชม.",
     "stock": [
-      "loadstring(game:HttpGet(\"https://raw.githubusercontent.com/Un1queHUB/Project-S/refs/heads/main/(S)Unique%20HUB.lua\"))() - PS-KEY-74142789",
       "loadstring(game:HttpGet(\"https://raw.githubusercontent.com/Un1queHUB/Project-S/refs/heads/main/(S)Unique%20HUB.lua\"))() - PS-KEY-51070424",
       "loadstring(game:HttpGet(\"https://raw.githubusercontent.com/Un1queHUB/Project-S/refs/heads/main/(S)Unique%20HUB.lua\"))() - PS-KEY-65084599",
       "loadstring(game:HttpGet(\"https://raw.githubusercontent.com/Un1queHUB/Project-S/refs/heads/main/(S)Unique%20HUB.lua\"))() - PS-KEY-29025664",
