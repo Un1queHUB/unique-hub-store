@@ -1,0 +1,767 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Unique HUB Store - ระบบจัดการหลังบ้าน (Backoffice)</title>
+    <!-- Google Fonts: Prompt & Kanit & Orbitron -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;600;700;800&family=Orbitron:wght@600;800;900&family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <!-- Main Stylesheet -->
+    <link rel="stylesheet" href="style.css">
+</head>
+<body style="background: #060810; min-height: 100vh; display: flex; flex-direction: column;">
+    <!-- Background Animated Glow -->
+    <div class="bg-glow bg-glow-1"></div>
+    <div class="bg-glow bg-glow-2"></div>
+    <div class="bg-grid-overlay"></div>
+
+    <!-- Admin Header Navbar -->
+    <header class="navbar" style="border-bottom: 1px solid rgba(255, 0, 127, 0.3); background: rgba(10, 14, 25, 0.95);">
+        <div class="nav-container">
+            <a href="admin.html" class="nav-logo">
+                <img src="assets/images/logo.png" alt="Unique HUB Store" class="nav-logo-img">
+                <span class="logo-text">UNIQUE <span class="highlight">HUB</span> <span class="badge-admin" style="font-size: 0.75rem; margin-left: 8px;">BACKOFFICE</span></span>
+            </a>
+
+            <div class="nav-user-actions" style="display: flex; gap: 10px; align-items: center;">
+                <a href="https://discord.gg/3BsH362aEJ" target="_blank" rel="noopener noreferrer" class="btn btn-discord btn-sm" title="Discord ร้านค้า">
+                    <i class="fa-brands fa-discord"></i> Discord
+                </a>
+                <a href="index.html" class="btn btn-secondary btn-sm" style="color: var(--neon-cyan); border-color: rgba(0, 240, 255, 0.3);">
+                    <i class="fa-solid fa-store"></i> ดูหน้าร้านค้า
+                </a>
+                <button id="adminLogoutBtn" class="btn btn-sm" style="display: none; background: rgba(255, 0, 127, 0.2); border: 1px solid var(--neon-pink); color: #fff;" onclick="adminLogout()">
+                    <i class="fa-solid fa-right-from-bracket"></i> ออกจากระบบ
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Admin Main Container -->
+    <main class="main-wrapper" style="flex-grow: 1; padding-top: 30px; padding-bottom: 50px;">
+        <!-- Screen 1: Admin Password Gate -->
+        <div id="adminGateScreen" style="max-width: 440px; margin: 50px auto; background: #0f1322; border: 1px solid var(--border-highlight); border-radius: var(--radius-lg); padding: 36px 28px; text-align: center; box-shadow: 0 15px 40px rgba(0,0,0,0.8), 0 0 30px rgba(0, 240, 255, 0.15);">
+            <img src="assets/images/logo.png" style="width: 85px; height: 85px; margin-bottom: 14px; filter: drop-shadow(0 0 15px var(--neon-cyan));">
+            <h3 style="font-size: 1.4rem; font-weight: 700; color: #fff; margin-bottom: 6px;">เข้าสู่ระบบหลังบ้าน Unique HUB</h3>
+            <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 24px;">เฉพาะผู้ดูแลระบบร้านค้าเท่านั้น กรุณาใส่รหัสผ่านเพื่อเข้าถึง</p>
+
+            <div class="form-group">
+                <input type="password" id="adminGatePassword" placeholder="ใส่รหัสผ่านแอดมิน..." style="text-align: center; font-size: 1.1rem; letter-spacing: 2px;" onkeydown="if(event.key==='Enter') verifyAdminLogin()">
+            </div>
+
+            <button class="btn btn-primary btn-block" onclick="verifyAdminLogin()">
+                <i class="fa-solid fa-key"></i> เข้าสู่ระบบแอดมิน
+            </button>
+
+            <div style="margin-top: 20px;">
+                <a href="index.html" style="color: var(--text-muted); font-size: 0.85rem; text-decoration: none;">
+                    <i class="fa-solid fa-arrow-left"></i> กลับไปยังหน้าร้านค้า
+                </a>
+            </div>
+        </div>
+
+        <!-- Screen 2: Admin Dashboard Panel -->
+        <div id="adminDashboardScreen" class="hide" style="background: #0d111e; border: 1px solid var(--border-color); border-radius: var(--radius-lg); padding: 26px; box-shadow: 0 20px 50px rgba(0,0,0,0.7);">
+            <!-- Admin Tabs Navigation -->
+            <div class="admin-tabs" style="margin-bottom: 24px; border-bottom: 1px solid rgba(255, 255, 255, 0.08); padding-bottom: 14px; display: flex; gap: 8px; flex-wrap: wrap;">
+                <button class="admin-tab-btn active" onclick="switchTab('overviewTab', this)">
+                    <i class="fa-solid fa-chart-line"></i> ภาพรวมร้านค้า
+                </button>
+                <button class="admin-tab-btn" onclick="switchTab('usersTab', this)">
+                    <i class="fa-solid fa-users"></i> จัดการสมาชิก (Users)
+                </button>
+                <button class="admin-tab-btn" onclick="switchTab('topupsTab', this)">
+                    <i class="fa-solid fa-money-bill-transfer"></i> คำขอเติมเงิน <span id="pendingTopupBadge" class="badge-pending-count hide">0</span>
+                </button>
+                <button class="admin-tab-btn" onclick="switchTab('ordersTab', this)">
+                    <i class="fa-solid fa-receipt"></i> ประวัติคำสั่งซื้อ
+                </button>
+                <button class="admin-tab-btn" onclick="switchTab('stockTab', this)">
+                    <i class="fa-solid fa-boxes-stacked"></i> สต็อกสินค้า
+                </button>
+                <button class="admin-tab-btn" onclick="switchTab('addTab', this)">
+                    <i class="fa-solid fa-plus-circle"></i> เพิ่มสินค้าใหม่
+                </button>
+                <button class="admin-tab-btn" onclick="switchTab('storeTab', this)">
+                    <i class="fa-solid fa-bullhorn"></i> ประกาศ & Discord
+                </button>
+                <button class="admin-tab-btn" onclick="switchTab('paymentTab', this)">
+                    <i class="fa-solid fa-credit-card"></i> ตั้งค่ารับเงิน
+                </button>
+                <button class="admin-tab-btn" onclick="switchTab('securityTab', this)">
+                    <i class="fa-solid fa-shield-halved"></i> รหัสผ่านแอดมิน
+                </button>
+                <button class="admin-tab-btn" onclick="switchTab('backupTab', this)">
+                    <i class="fa-solid fa-database"></i> สำรอง & นำเข้าข้อมูล
+                </button>
+            </div>
+
+            <!-- Tab 1: Store Overview / Dashboard Stats -->
+            <div class="admin-tab-content" id="overviewTab">
+                <div style="margin-bottom: 20px;">
+                    <h3 style="color: #fff; font-size: 1.3rem;"><i class="fa-solid fa-chart-pie text-neon-cyan"></i> สรุปข้อมูลร้านค้า Unique HUB</h3>
+                    <p style="color: var(--text-muted); font-size: 0.85rem;">ภาพรวมสถานะสมาชิก สินค้า ยอดเงิน และยอดขายทั้งหมดในระบบ</p>
+                </div>
+
+                <!-- Stats Grid Cards -->
+                <div class="admin-stats-grid">
+                    <div class="admin-stat-card">
+                        <div class="admin-stat-icon" style="background: rgba(0, 240, 255, 0.15); color: var(--neon-cyan);">
+                            <i class="fa-solid fa-users"></i>
+                        </div>
+                        <div>
+                            <span style="font-size: 0.8rem; color: var(--text-muted);">สมาชิกทั้งหมด</span>
+                            <h3 id="statTotalUsers" style="color: #fff; font-family: var(--font-orbitron); font-size: 1.5rem;">0</h3>
+                        </div>
+                    </div>
+
+                    <div class="admin-stat-card">
+                        <div class="admin-stat-icon" style="background: rgba(16, 185, 129, 0.15); color: var(--neon-green);">
+                            <i class="fa-solid fa-wallet"></i>
+                        </div>
+                        <div>
+                            <span style="font-size: 0.8rem; color: var(--text-muted);">ยอดเงินรวมในระบบ</span>
+                            <h3 id="statTotalBalance" style="color: var(--neon-green); font-family: var(--font-orbitron); font-size: 1.5rem;">฿0.00</h3>
+                        </div>
+                    </div>
+
+                    <div class="admin-stat-card">
+                        <div class="admin-stat-icon" style="background: rgba(255, 209, 102, 0.15); color: var(--neon-yellow);">
+                            <i class="fa-solid fa-boxes-stacked"></i>
+                        </div>
+                        <div>
+                            <span style="font-size: 0.8rem; color: var(--text-muted);">สินค้า & สต็อกพร้อมส่ง</span>
+                            <h3 id="statTotalStock" style="color: var(--neon-yellow); font-family: var(--font-orbitron); font-size: 1.5rem;">0 ชิ้น</h3>
+                        </div>
+                    </div>
+
+                    <div class="admin-stat-card">
+                        <div class="admin-stat-icon" style="background: rgba(255, 0, 127, 0.15); color: var(--neon-pink);">
+                            <i class="fa-solid fa-cart-shopping"></i>
+                        </div>
+                        <div>
+                            <span style="font-size: 0.8rem; color: var(--text-muted);">คำสั่งซื้อทั้งหมด</span>
+                            <h3 id="statTotalOrders" style="color: var(--neon-pink); font-family: var(--font-orbitron); font-size: 1.5rem;">0 รายการ</h3>
+                        </div>
+                    </div>
+
+                    <div class="admin-stat-card" style="border-color: rgba(255, 209, 102, 0.3);">
+                        <div class="admin-stat-icon" style="background: rgba(255, 209, 102, 0.15); color: var(--neon-yellow);">
+                            <i class="fa-solid fa-clock-rotate-left"></i>
+                        </div>
+                        <div>
+                            <span style="font-size: 0.8rem; color: var(--text-muted);">คำขอเติมเงินรออนุมัติ</span>
+                            <h3 id="statPendingTopups" style="color: var(--neon-yellow); font-family: var(--font-orbitron); font-size: 1.5rem;">0 รายการ</h3>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Recent Orders Preview -->
+                <div style="margin-top: 24px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                        <h4 style="color: #fff;"><i class="fa-solid fa-clock-rotate-left text-neon-cyan"></i> คำสั่งซื้อล่าสุด</h4>
+                        <button class="btn btn-secondary btn-sm" onclick="switchTab('ordersTab', document.querySelectorAll('.admin-tab-btn')[2])">
+                            ดูประวัติคำสั่งซื้อทั้งหมด <i class="fa-solid fa-arrow-right"></i>
+                        </button>
+                    </div>
+                    <div class="admin-table-container">
+                        <table class="admin-table">
+                            <thead>
+                                <tr>
+                                    <th>รหัสคำสั่งซื้อ</th>
+                                    <th>เวลา</th>
+                                    <th>ลูกค้า</th>
+                                    <th>สินค้า</th>
+                                    <th>ราคา</th>
+                                    <th>ข้อมูลสินค้า</th>
+                                </tr>
+                            </thead>
+                            <tbody id="overviewRecentOrdersTable">
+                                <!-- Populated by JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tab 2: Users Management (จัดการสมาชิก & ยอดเงิน) -->
+            <div class="admin-tab-content hide" id="usersTab">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 10px;">
+                    <div>
+                        <h4 style="color: #fff;"><i class="fa-solid fa-users text-neon-cyan"></i> จัดการสมาชิกทั้งหมดในระบบ</h4>
+                        <p style="color: var(--text-muted); font-size: 0.82rem;">ค้นหา, ปรับยอดเงิน, เปลี่ยนรหัสผ่าน, แบนสมาชิก, หรือดูประวัติการซื้อ</p>
+                    </div>
+                    <button class="btn btn-primary btn-sm" onclick="openAddUserModal()">
+                        <i class="fa-solid fa-user-plus"></i> เพิ่มสมาชิกใหม่
+                    </button>
+                </div>
+
+                <!-- Search Bar & Realtime Controls -->
+                <div class="admin-search-bar" style="justify-content: space-between;">
+                    <div style="display: flex; gap: 10px; align-items: center; flex: 1;">
+                        <input type="text" id="userSearchInput" class="admin-search-input" placeholder="🔍 ค้นหาชื่อสมาชิก..." oninput="filterUsersTable()">
+                        <span id="userCountBadge" style="font-size: 0.85rem; color: var(--text-muted);">กำลังแสดง 0 คน</span>
+                    </div>
+                    <div style="display: flex; gap: 8px; align-items: center;">
+                        <span class="badge" style="background: rgba(16, 185, 129, 0.2); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.4); font-size: 0.78rem;">
+                            <i class="fa-solid fa-bolt fa-fade"></i> ซิงค์เรียลไทม์ (Auto-Sync)
+                        </span>
+                        <button class="btn btn-secondary btn-sm" onclick="forceSyncAdminUsers()" title="รีเฟรชข้อมูลสมาชิก">
+                            <i class="fa-solid fa-rotate"></i> รีเฟรชสด
+                        </button>
+                    </div>
+                </div>
+
+                <div class="admin-table-container">
+                    <table class="admin-table">
+                        <thead>
+                            <tr>
+                                <th>ชื่อผู้ใช้ (Username)</th>
+                                <th>ยอดเงินคงเหลือ</th>
+                                <th>ประวัติซื้อ</th>
+                                <th>วันที่สมัคร</th>
+                                <th>สถานะ</th>
+                                <th>การจัดการ</th>
+                            </tr>
+                        </thead>
+                        <tbody id="adminUsersTable">
+                            <!-- Populated by JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Tab: Top-up Requests Management (จัดการคำขอเติมเงิน & สลิป) -->
+            <div class="admin-tab-content hide" id="topupsTab">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 10px;">
+                    <div>
+                        <h4 style="color: #fff;"><i class="fa-solid fa-money-bill-transfer text-neon-cyan"></i> รายการแจ้งโอนและคำขอเติมเงิน</h4>
+                        <p style="color: var(--text-muted); font-size: 0.82rem;">ตรวจสอบสลิปการโอนเงินพร้อมเพย์ หรือประวัติการเติมเงิน TrueMoney อนุมัติเพื่อเพิ่มเครดิตทันที</p>
+                    </div>
+                    <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                        <button class="btn btn-secondary btn-sm" id="btnFilterTopupAll" onclick="filterTopupStatus('all')">ทั้งหมด</button>
+                        <button class="btn btn-secondary btn-sm" id="btnFilterTopupPending" style="color: var(--neon-yellow); border-color: rgba(255, 209, 102, 0.4);" onclick="filterTopupStatus('pending')">
+                            <i class="fa-solid fa-clock"></i> รอตรวจสอบ
+                        </button>
+                        <button class="btn btn-secondary btn-sm" id="btnFilterTopupApproved" style="color: #10b981; border-color: rgba(16, 185, 129, 0.4);" onclick="filterTopupStatus('approved')">
+                            <i class="fa-solid fa-check"></i> อนุมัติแล้ว
+                        </button>
+                        <button class="btn btn-secondary btn-sm" onclick="forceSyncAdminData()" title="รีเฟรชข้อมูล">
+                            <i class="fa-solid fa-rotate"></i> รีเฟรชสด
+                        </button>
+                    </div>
+                </div>
+
+                <div class="admin-search-bar" style="justify-content: space-between;">
+                    <div style="display: flex; gap: 10px; align-items: center; flex: 1;">
+                        <input type="text" id="topupSearchInput" class="admin-search-input" placeholder="🔍 ค้นหาด้วยชื่อผู้ใช้, รหัสคำขอ, หรือจำนวนเงิน..." oninput="filterTopupsTable()">
+                        <span id="topupCountBadge" style="font-size: 0.85rem; color: var(--text-muted);">รวม 0 รายการ</span>
+                    </div>
+                </div>
+
+                <div class="admin-table-container">
+                    <table class="admin-table">
+                        <thead>
+                            <tr>
+                                <th>รหัสคำขอ</th>
+                                <th>วันเวลา</th>
+                                <th>ลูกค้า (Username)</th>
+                                <th>ช่องทาง</th>
+                                <th>จำนวนเงิน</th>
+                                <th>สลิปหลักฐาน</th>
+                                <th>สถานะ</th>
+                                <th>การจัดการ</th>
+                            </tr>
+                        </thead>
+                        <tbody id="adminTopupsTable">
+                            <!-- Injected by JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Tab 3: Store Order History (ประวัติคำสั่งซื้อทั้งหมดของร้าน) -->
+            <div class="admin-tab-content hide" id="ordersTab">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 10px;">
+                    <div>
+                        <h4 style="color: #fff;"><i class="fa-solid fa-receipt text-neon-cyan"></i> ประวัติคำสั่งซื้อทั้งหมดของร้าน</h4>
+                        <p style="color: var(--text-muted); font-size: 0.82rem;">บันทึกการซื้อสินค้าจากลูกค้าทุกคน แสดงคีย์และเวลาจัดส่งแบบเรียลไทม์</p>
+                    </div>
+                    <div style="display: flex; gap: 8px;">
+                        <button class="btn btn-secondary btn-sm" onclick="exportOrdersJson()">
+                            <i class="fa-solid fa-download"></i> ดาวน์โหลด orders.json
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Order Search Bar -->
+                <div class="admin-search-bar">
+                    <input type="text" id="orderSearchInput" class="admin-search-input" placeholder="🔍 ค้นหาด้วยรหัสคำสั่งซื้อ, ชื่อลูกค้า, หรือชื่อสินค้า..." oninput="filterOrdersTable()">
+                    <span id="orderCountBadge" style="font-size: 0.85rem; color: var(--text-muted);">รวม 0 รายการ</span>
+                </div>
+
+                <div class="admin-table-container">
+                    <table class="admin-table">
+                        <thead>
+                            <tr>
+                                <th>รหัสคำสั่งซื้อ</th>
+                                <th>วันเวลา</th>
+                                <th>ลูกค้า (User)</th>
+                                <th>สินค้า</th>
+                                <th>ราคา</th>
+                                <th>ข้อมูลที่จัดส่ง</th>
+                                <th>จัดการ</th>
+                            </tr>
+                        </thead>
+                        <tbody id="adminOrdersTable">
+                            <!-- Populated by JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Tab 4: Current Stock Management -->
+            <div class="admin-tab-content hide" id="stockTab">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 10px;">
+                    <div>
+                        <h4 style="color: #fff;"><i class="fa-solid fa-list-check text-neon-cyan"></i> รายการสินค้า & สต็อกในระบบ</h4>
+                        <p style="color: var(--text-muted); font-size: 0.82rem;">จัดการสินค้า เติมสต็อกสคริปต์/คีย์/ไอดี แก้ไขราคา หรือลบสินค้า</p>
+                    </div>
+                    <button class="btn btn-primary btn-sm" onclick="switchTab('addTab', document.querySelectorAll('.admin-tab-btn')[4])">
+                        <i class="fa-solid fa-plus"></i> เพิ่มสินค้าใหม่
+                    </button>
+                </div>
+
+                <div class="admin-search-bar">
+                    <input type="text" id="stockSearchInput" class="admin-search-input" placeholder="🔍 ค้นหาชื่อสินค้า..." oninput="filterProductsTable()">
+                </div>
+
+                <div class="admin-table-container">
+                    <table class="admin-table">
+                        <thead>
+                            <tr>
+                                <th>รูป</th>
+                                <th>ชื่อสินค้า</th>
+                                <th>ราคา</th>
+                                <th>สต็อกคงเหลือ</th>
+                                <th>เติมสต็อก</th>
+                                <th>จัดการ</th>
+                            </tr>
+                        </thead>
+                        <tbody id="adminProductsTable">
+                            <!-- Populated by JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Tab 5: Add New Product -->
+            <div class="admin-tab-content hide" id="addTab">
+                <h4 style="color: #fff; margin-bottom: 16px;"><i class="fa-solid fa-plus-circle text-neon-cyan"></i> เพิ่มสินค้าลงขายในร้านค้า</h4>
+                <div class="admin-form-grid">
+                    <div class="form-group">
+                        <label>ชื่อสินค้า:</label>
+                        <input type="text" id="newProdName" placeholder="เช่น Aimbot 1day หรือ Auto Fishing LifeTime">
+                    </div>
+                    <div class="form-group">
+                        <label>หมวดหมู่:</label>
+                        <select id="newProdCategory">
+                            <option value="scripts" selected>Script Roblox</option>
+                            <option value="accounts">ไอดีเกม</option>
+                            <option value="items">ไอเทม & ของในเกม</option>
+                            <option value="services">บริการอื่นๆ</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>ราคาขาย (บาท):</label>
+                        <input type="number" id="newProdPrice" placeholder="เช่น 50">
+                    </div>
+                    <div class="form-group">
+                        <label>ราคาเดิม (ขีดฆ่า):</label>
+                        <input type="number" id="newProdOriginalPrice" placeholder="เช่น 80">
+                    </div>
+                    <div class="form-group">
+                        <label>ลิงก์รูปภาพสินค้า:</label>
+                        <input type="text" id="newProdImage" value="assets/images/banner.jpg" placeholder="assets/images/... หรือ https://...">
+                    </div>
+                    <div class="form-group">
+                        <label>ป้ายแท็ก (Badge):</label>
+                        <input type="text" id="newProdTag" value="ส่งออโต้ 24 ชม." placeholder="เช่น ขายดี, แนะนำ, VIP">
+                    </div>
+                    <div class="form-group full-width">
+                        <label>คำอธิบายสินค้าสั้นๆ:</label>
+                        <input type="text" id="newProdDesc" placeholder="เช่น สคริปต์ Aimbot Roblox ล็อคเป้าแม่นยำ ปลอดภัย 100%">
+                    </div>
+                    <div class="form-group full-width">
+                        <label>สต็อกสินค้า (ส่งให้ลูกค้าอัตโนมัติ บรรทัดละ 1 ชิ้น):</label>
+                        <textarea id="newProdAccounts" rows="5" placeholder="สำหรับ Script Roblox: loadstring(...)() - UNIQUE-KEY-xxxx&#10;สำหรับไอดีเกม: Username:Password"></textarea>
+                    </div>
+                </div>
+                <button class="btn btn-primary" onclick="addNewProductFromAdmin()">
+                    <i class="fa-solid fa-save"></i> บันทึกและวางขายทันที
+                </button>
+            </div>
+
+            <!-- Tab 6: Announcements & Discord Store Settings -->
+            <div class="admin-tab-content hide" id="storeTab">
+                <div style="background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(0, 240, 255, 0.25); border-radius: 12px; padding: 24px; max-width: 680px;">
+                    <h4 style="color: #fff; margin-bottom: 6px;"><i class="fa-solid fa-bullhorn text-neon-cyan"></i> จัดการประกาศ & ช่องทางติดต่อ Discord</h4>
+                    <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 20px;">
+                        ปรับแต่งข้อความวิ่งบนหัวเว็บ และลิงก์ Discord ให้ลูกค้าติดต่อได้โดยตรง
+                    </p>
+
+                    <div class="form-group">
+                        <label style="color: var(--neon-cyan); font-weight: 600;"><i class="fa-solid fa-bullhorn"></i> ข้อความในแถบประกาศ (Announcement Bar):</label>
+                        <textarea id="settingAnnouncementText" rows="3" placeholder="ข้อความวิ่งหัวเว็บ..."></textarea>
+                        <small style="color: var(--text-muted); font-size: 0.78rem;">* จะแสดงบนแถบวิ่งด้านบนสุดของหน้าเว็บ</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label style="color: #818cf8; font-weight: 600;"><i class="fa-brands fa-discord"></i> ลิงก์ Discord ประจำร้าน (Invite Link):</label>
+                        <input type="text" id="settingDiscordUrl" value="https://discord.gg/3BsH362aEJ" placeholder="https://discord.gg/3BsH362aEJ">
+                        <small style="color: var(--text-muted); font-size: 0.78rem;">* ลิงก์นี้จะผูกกับปุ่ม Discord ทุกตำแหน่งบนเว็บ รวมถึงปุ่มลอยมุมขวาล่าง</small>
+                    </div>
+
+                    <div style="margin-top: 15px; display: flex; gap: 12px; align-items: center;">
+                        <button class="btn btn-primary" onclick="saveStoreAnnouncementSettings()">
+                            <i class="fa-solid fa-save"></i> บันทึกการตั้งค่าร้านค้า
+                        </button>
+                        <a id="btnTestDiscord" href="https://discord.gg/3BsH362aEJ" target="_blank" rel="noopener noreferrer" class="btn btn-discord btn-sm">
+                            <i class="fa-brands fa-discord"></i> ทดสอบเปิด Discord
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tab 7: Payment Settings (PromptPay) -->
+            <div class="admin-tab-content hide" id="paymentTab">
+                <div style="background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(0, 240, 255, 0.25); border-radius: 12px; padding: 24px; max-width: 640px;">
+                    <h4 style="color: #fff; margin-bottom: 6px;"><i class="fa-solid fa-credit-card text-neon-cyan"></i> ตั้งค่าบัญชีรับเงินพร้อมเพย์ (PromptPay)</h4>
+                    <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 20px;">
+                        กรอกเบอร์โทรหรือเลขพร้อมเพย์ของเจ้าของร้าน เงินจะเข้าบัญชีของคุณโดยตรง 100% ไม่ผ่านคนกลาง
+                    </p>
+
+                    <div class="form-group">
+                        <label style="color: var(--neon-yellow); font-weight: 600;"><i class="fa-solid fa-qrcode"></i> เบอร์โทร หรือ เลขพร้อมเพย์ (PromptPay):</label>
+                        <input type="text" id="settingPromptpayNumber" placeholder="เช่น 0834929303">
+                        <small style="color: var(--text-muted); font-size: 0.78rem;">* ระบบจะสร้าง QR Code พร้อมเพย์ตามเบอร์นี้ให้อัตโนมัติ</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label style="color: var(--neon-yellow); font-weight: 600;"><i class="fa-solid fa-user-check"></i> ชื่อบัญชีพร้อมเพย์ (Display Name):</label>
+                        <input type="text" id="settingPromptpayName" placeholder="เช่น จิตติพัฒน์ ศิลาพจน์">
+                    </div>
+
+                    <div style="margin-top: 24px; padding-top: 20px; border-top: 1px solid rgba(255, 255, 255, 0.1);">
+                        <h5 style="color: #fff; margin-bottom: 4px;"><i class="fa-solid fa-robot text-neon-green"></i> เชื่อมต่อ SlipOK API (เช็คยอดเงินสลิปอัตโนมัติ)</h5>
+                        <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 14px;">
+                            *ระบบพื้นฐานมีตัวถอดรหัส Mini QR Code สลิปธนาคารและระบบกันสลิปซ้ำให้อัตโนมัติ หากมีบัญชี SlipOK (slipok.com) สามารถกรอก API Key เพื่อตรวจยอดเงินและชื่อบัญชีตรงกับธนาคารได้
+                        </p>
+                        <div class="form-group">
+                            <label style="color: var(--neon-cyan); font-weight: 600;"><i class="fa-solid fa-key"></i> SlipOK API Key:</label>
+                            <input type="password" id="settingSlipokKey" placeholder="เช่น SLIPOK_XXXXXXXXXXXX">
+                        </div>
+                        <div class="form-group">
+                            <label style="color: var(--neon-cyan); font-weight: 600;"><i class="fa-solid fa-code-branch"></i> SlipOK Branch ID:</label>
+                            <input type="text" id="settingSlipokBranch" placeholder="เช่น 1234 (ถ้ามี)">
+                        </div>
+                    </div>
+
+                    <div style="margin-top: 20px; display: flex; gap: 12px; align-items: center;">
+                        <button class="btn btn-primary" onclick="saveAdminPaymentSettings()">
+                            <i class="fa-solid fa-save"></i> บันทึกการตั้งค่ารับเงิน
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tab 8: Security / Change Admin Password -->
+            <div class="admin-tab-content hide" id="securityTab">
+                <div style="background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 0, 127, 0.35); border-radius: 12px; padding: 24px; max-width: 480px;">
+                    <h4 style="color: #fff; margin-bottom: 8px;"><i class="fa-solid fa-shield-halved text-neon-pink"></i> เปลี่ยนรหัสผ่านแอดมิน (เปลี่ยนรหัสใหม่)</h4>
+                    <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 20px;">
+                        เปลี่ยนรหัสผ่านเพื่อไม่ให้คนอื่นเดาหรือเข้าใช้งานหน้านี้ได้
+                    </p>
+                    <div class="form-group">
+                        <label>รหัสผ่านเดิม:</label>
+                        <input type="password" id="adminOldPassInput" placeholder="รหัสผ่านปัจจุบัน (ค่าเริ่มต้น admin1234)...">
+                    </div>
+                    <div class="form-group">
+                        <label style="color: var(--neon-cyan);">รหัสผ่านใหม่:</label>
+                        <input type="password" id="adminNewPassInput" placeholder="ตั้งรหัสผ่านใหม่...">
+                    </div>
+                    <div class="form-group">
+                        <label style="color: var(--neon-cyan);">ยืนยันรหัสผ่านใหม่อีกครั้ง:</label>
+                        <input type="password" id="adminConfirmPassInput" placeholder="พิมพ์รหัสผ่านใหม่อีกครั้ง...">
+                    </div>
+                    <button class="btn btn-primary btn-block" onclick="changeAdminPass()">
+                        <i class="fa-solid fa-lock"></i> บันทึกรหัสผ่านใหม่
+                    </button>
+                </div>
+            </div>
+
+            <!-- Tab 9: Backup & Restore Data (สำรองและนำเข้าข้อมูล) -->
+            <div class="admin-tab-content hide" id="backupTab">
+                <div style="background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(0, 240, 255, 0.3); border-radius: 12px; padding: 24px; max-width: 780px;">
+                    <h4 style="color: #fff; margin-bottom: 8px;"><i class="fa-solid fa-database text-neon-cyan"></i> สำรอง & นำเข้าข้อมูลระบบ (Sync & Backup)</h4>
+                    <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 16px;">
+                        ดาวน์โหลดข้อมูลเก็บไว้ในเครื่องเพื่อนำไปวางในโฟลเดอร์ <code>ทำเว็ป</code> บน Vercel หรือกู้คืนข้อมูล
+                    </p>
+                    <div style="display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap;">
+                        <button class="btn btn-primary btn-sm" onclick="downloadProductsJson()">
+                            <i class="fa-solid fa-download"></i> ดาวน์โหลด products.json
+                        </button>
+                        <button class="btn btn-secondary btn-sm" onclick="downloadPaymentJson()">
+                            <i class="fa-solid fa-credit-card"></i> ดาวน์โหลด payment.json
+                        </button>
+                        <button class="btn btn-secondary btn-sm" onclick="downloadUsersJson()">
+                            <i class="fa-solid fa-users"></i> ดาวน์โหลด users.json
+                        </button>
+                        <button class="btn btn-secondary btn-sm" onclick="downloadAllOrdersJson()">
+                            <i class="fa-solid fa-receipt"></i> ดาวน์โหลด orders.json
+                        </button>
+                    </div>
+
+                    <hr style="border: 0; border-top: 1px solid rgba(255,255,255,0.08); margin: 20px 0;">
+
+                    <h5 style="color: #fff; margin-bottom: 8px;"><i class="fa-solid fa-file-import text-neon-yellow"></i> กู้คืน / นำเข้าข้อมูลจากไฟล์ (Restore Data)</h5>
+                    <p style="font-size: 0.82rem; color: var(--text-muted); margin-bottom: 12px;">เลือกไฟล์ JSON ที่ต้องการนำเข้าระบบ (เช่น products.json หรือ users.json):</p>
+                    <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                        <input type="file" id="importJsonFileInput" accept=".json" style="color: #fff; font-size: 0.85rem;">
+                        <button class="btn btn-secondary btn-sm" onclick="importJsonData()">
+                            <i class="fa-solid fa-upload"></i> นำเข้าไฟล์นี้เข้าระบบ
+                        </button>
+                    </div>
+
+                    <div style="margin-top: 20px;">
+                        <label style="font-size: 0.85rem; color: var(--text-muted);">พรีวิว products.json ปัจจุบัน:</label>
+                        <textarea id="exportJsonViewer" rows="8" readonly style="font-family: monospace; font-size: 0.82rem; background: rgba(0,0,0,0.5);"></textarea>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- ==================== MODALS ==================== -->
+
+    <!-- Modal: Edit Product / แก้ไขสินค้า -->
+    <div class="modal-backdrop" id="editProductModal" style="z-index: 1005;">
+        <div class="modal-card modal-card-lg">
+            <div class="modal-header">
+                <h3><i class="fa-solid fa-pen-to-square text-neon-cyan"></i> แก้ไขข้อมูลสินค้า</h3>
+                <button class="modal-close-btn" onclick="closeAdminModal('editProductModal')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="editProdId">
+                <div class="admin-form-grid">
+                    <div class="form-group">
+                        <label>ชื่อสินค้า:</label>
+                        <input type="text" id="editProdName">
+                    </div>
+                    <div class="form-group">
+                        <label>หมวดหมู่:</label>
+                        <select id="editProdCategory">
+                            <option value="scripts">Script Roblox</option>
+                            <option value="accounts">ไอดีเกม</option>
+                            <option value="items">ไอเทม & ของในเกม</option>
+                            <option value="services">บริการอื่นๆ</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>ราคาขาย (บาท):</label>
+                        <input type="number" id="editProdPrice">
+                    </div>
+                    <div class="form-group">
+                        <label>ราคาเดิม (ขีดฆ่า):</label>
+                        <input type="number" id="editProdOriginalPrice">
+                    </div>
+                    <div class="form-group">
+                        <label>ลิงก์รูปภาพสินค้า:</label>
+                        <input type="text" id="editProdImage">
+                    </div>
+                    <div class="form-group">
+                        <label>ป้ายแท็ก (Badge):</label>
+                        <input type="text" id="editProdTag">
+                    </div>
+                    <div class="form-group full-width">
+                        <label>คำอธิบายสินค้าสั้นๆ:</label>
+                        <input type="text" id="editProdDesc">
+                    </div>
+                    <div class="form-group full-width">
+                        <label>สต็อกสินค้าคงเหลือ (แก้ไข/เพิ่ม/ลบสต็อกได้ตรงนี้ บรรทัดละ 1 ชิ้น):</label>
+                        <textarea id="editProdAccounts" rows="5" placeholder="loadstring(...)() - UNIQUE-KEY-xxxx"></textarea>
+                    </div>
+                </div>
+                <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 10px;">
+                    <button class="btn btn-secondary" onclick="closeAdminModal('editProductModal')">ยกเลิก</button>
+                    <button class="btn btn-primary" onclick="saveProductEditFromAdmin()">
+                        <i class="fa-solid fa-check"></i> บันทึกการแก้ไข
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Adjust User Balance / ปรับยอดเงินสมาชิก -->
+    <div class="modal-backdrop" id="adjustBalanceModal" style="z-index: 1005;">
+        <div class="modal-card">
+            <div class="modal-header">
+                <h3><i class="fa-solid fa-wallet text-neon-green"></i> ปรับยอดเงินสมาชิก</h3>
+                <button class="modal-close-btn" onclick="closeAdminModal('adjustBalanceModal')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="adjustUserIndex">
+                <div style="text-align: center; margin-bottom: 18px;">
+                    <div style="font-size: 0.85rem; color: var(--text-muted);">ชื่อผู้ใช้:</div>
+                    <h3 id="adjustUsernameText" style="color: #fff; font-size: 1.3rem;">Username</h3>
+                    <div style="margin-top: 4px; font-size: 0.9rem;">
+                        ยอดเงินปัจจุบัน: <strong id="adjustCurrentBalanceText" style="color: var(--neon-cyan); font-family: var(--font-orbitron);">฿0.00</strong>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>การดำเนินการ:</label>
+                    <select id="adjustActionType">
+                        <option value="add">➕ เพิ่มเงิน (+ เข้ากระเป๋า)</option>
+                        <option value="subtract">➖ หักเงิน (- ออกจากกระเป๋า)</option>
+                        <option value="set">⚙️ กำหนดยอดคงเหลือใหม่โดยตรง</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>จำนวนเงิน (บาท):</label>
+                    <input type="number" id="adjustAmountInput" placeholder="ใส่จำนวนเงิน..." min="0">
+                </div>
+
+                <div style="display: flex; gap: 8px; margin-bottom: 18px;">
+                    <button class="btn-chip" onclick="document.getElementById('adjustAmountInput').value = 50">+50</button>
+                    <button class="btn-chip" onclick="document.getElementById('adjustAmountInput').value = 100">+100</button>
+                    <button class="btn-chip" onclick="document.getElementById('adjustAmountInput').value = 300">+300</button>
+                    <button class="btn-chip" onclick="document.getElementById('adjustAmountInput').value = 500">+500</button>
+                </div>
+
+                <div style="display: flex; gap: 10px; justify-content: flex-end;">
+                    <button class="btn btn-secondary" onclick="closeAdminModal('adjustBalanceModal')">ยกเลิก</button>
+                    <button class="btn btn-primary" onclick="confirmAdjustUserBalance()">
+                        <i class="fa-solid fa-check"></i> ยืนยันการปรับยอดเงิน
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Reset User Password / รีเซ็ตรหัสผ่านสมาชิก -->
+    <div class="modal-backdrop" id="resetUserPassModal" style="z-index: 1005;">
+        <div class="modal-card">
+            <div class="modal-header">
+                <h3><i class="fa-solid fa-key text-neon-yellow"></i> ตั้งรหัสผ่านใหม่ให้สมาชิก</h3>
+                <button class="modal-close-btn" onclick="closeAdminModal('resetUserPassModal')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="resetPassUserIndex">
+                <div style="margin-bottom: 16px;">
+                    สมาชิก: <strong id="resetPassUsernameText" style="color: #fff;">User</strong>
+                </div>
+                <div class="form-group">
+                    <label>รหัสผ่านใหม่:</label>
+                    <input type="text" id="resetNewPassInput" placeholder="พิมพ์รหัสผ่านใหม่ให้สมาชิก...">
+                </div>
+                <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 15px;">
+                    <button class="btn btn-secondary" onclick="closeAdminModal('resetUserPassModal')">ยกเลิก</button>
+                    <button class="btn btn-primary" onclick="confirmResetUserPassword()">
+                        <i class="fa-solid fa-check"></i> บันทึกรหัสผ่านใหม่
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: View User Orders / ดูประวัติการซื้อของสมาชิกคนนี้ -->
+    <div class="modal-backdrop" id="viewUserOrdersModal" style="z-index: 1005;">
+        <div class="modal-card modal-card-lg">
+            <div class="modal-header">
+                <h3><i class="fa-solid fa-receipt text-neon-cyan"></i> ประวัติการซื้อของ: <span id="viewUserOrdersName" style="color: #fff;">User</span></h3>
+                <button class="modal-close-btn" onclick="closeAdminModal('viewUserOrdersModal')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="admin-table-container">
+                    <table class="admin-table">
+                        <thead>
+                            <tr>
+                                <th>รหัส</th>
+                                <th>เวลา</th>
+                                <th>สินค้า</th>
+                                <th>ราคา</th>
+                                <th>ข้อมูล/คีย์ที่ได้รับ</th>
+                                <th>คัดลอก</th>
+                            </tr>
+                        </thead>
+                        <tbody id="viewUserOrdersTableBody">
+                            <!-- Populated by JS -->
+                        </tbody>
+                    </table>
+                </div>
+                <div style="margin-top: 16px; text-align: right;">
+                    <button class="btn btn-secondary" onclick="closeAdminModal('viewUserOrdersModal')">ปิดหน้าต่าง</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Add New User / เพิ่มสมาชิกใหม่โดยตรง -->
+    <div class="modal-backdrop" id="addUserModal" style="z-index: 1005;">
+        <div class="modal-card">
+            <div class="modal-header">
+                <h3><i class="fa-solid fa-user-plus text-neon-green"></i> เพิ่มสมาชิกใหม่เข้าระบบ</h3>
+                <button class="modal-close-btn" onclick="closeAdminModal('addUserModal')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>ชื่อผู้ใช้งาน (Username):</label>
+                    <input type="text" id="addAdminUsername" placeholder="เช่น player01">
+                </div>
+                <div class="form-group">
+                    <label>รหัสผ่าน (Password):</label>
+                    <input type="text" id="addAdminPassword" placeholder="ตั้งรหัสผ่าน...">
+                </div>
+                <div class="form-group">
+                    <label>ยอดเงินเริ่มต้น (บาท):</label>
+                    <input type="number" id="addAdminBalance" value="0" placeholder="0">
+                </div>
+                <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 15px;">
+                    <button class="btn btn-secondary" onclick="closeAdminModal('addUserModal')">ยกเลิก</button>
+                    <button class="btn btn-primary" onclick="confirmAddUserFromAdmin()">
+                        <i class="fa-solid fa-check"></i> สร้างสมาชิกทันที
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: View Slip Image Fullscreen -->
+    <div class="modal-backdrop" id="viewSlipModal" style="z-index: 1010;">
+        <div class="modal-card">
+            <div class="modal-header">
+                <h3><i class="fa-solid fa-image text-neon-cyan"></i> ตรวจสอบสลิปการโอนเงิน</h3>
+                <button class="modal-close-btn" onclick="closeAdminModal('viewSlipModal')">&times;</button>
+            </div>
+            <div class="modal-body" style="text-align: center;">
+                <div id="viewSlipDetails" style="margin-bottom: 14px; font-size: 0.95rem; color: #fff; background: rgba(0,0,0,0.3); padding: 10px; border-radius: 8px;"></div>
+                <img id="viewSlipImg" class="slip-modal-img" src="" alt="สลิปโอนเงิน">
+                <div style="margin-top: 18px; display: flex; gap: 10px; justify-content: center;" id="viewSlipActions">
+                    <!-- Action buttons populated dynamically -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification Popup -->
+    <div id="toastContainer" class="toast-container"></div>
+
+    <script src="admin.js"></script>
+</body>
+</html>

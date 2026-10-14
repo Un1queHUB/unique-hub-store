@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Unique HUB Store - เว็บจำหน่ายสินค้าและบริการอัตโนมัติ 24 ชม.</title>
+    <!-- Google Fonts: Prompt & Kanit & Orbitron -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;600;700;800&family=Orbitron:wght@600;800;900&family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <!-- Main Stylesheet -->
+    <link rel="stylesheet" href="style.css">
+    <!-- jsQR: Automated Bank Slip QR Scanner -->
+    <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
+</head>
+<body>
+    <!-- Background Animated Glow -->
+    <div class="bg-glow bg-glow-1"></div>
+    <div class="bg-glow bg-glow-2"></div>
+    <div class="bg-grid-overlay"></div>
+
+    <!-- Announcement Bar -->
+    <div class="announcement-bar">
+        <div class="announcement-content">
+            <span class="badge"><i class="fa-solid fa-bullhorn"></i> ข่าวสาร</span>
+            <span class="text" id="announcementText">ยินดีต้อนรับสู่ Unique HUB Store • ระบบบริการอัตโนมัติ 24 ชม. • เติมเงินผ่านพร้อมเพย์ สแกนเช็คสลิปออโต้ รับเครดิตทันที • ติดต่อ Discord: https://discord.gg/3BsH362aEJ</span>
+        </div>
+    </div>
+
+    <!-- Navbar -->
+    <header class="navbar">
+        <div class="nav-container">
+            <a href="index.html" class="nav-logo" title="Unique HUB Store">
+                <img src="assets/images/logo.png" alt="Unique HUB Store" class="nav-logo-img">
+                <span class="logo-text">UNIQUE <span class="highlight">HUB</span> <span class="logo-sub">STORE</span></span>
+            </a>
+
+            <nav class="nav-links">
+                <a href="#shop" class="nav-link active"><i class="fa-solid fa-store"></i> หน้าร้านค้า</a>
+                <a href="javascript:void(0)" onclick="requireAuth('topupModal')" class="nav-link"><i class="fa-solid fa-wallet"></i> เติมเงิน</a>
+                <a href="javascript:void(0)" onclick="requireAuth('historyModal')" class="nav-link"><i class="fa-solid fa-clock-rotate-left"></i> ประวัติการซื้อ</a>
+                <a href="https://discord.gg/3BsH362aEJ" target="_blank" rel="noopener noreferrer" class="nav-link discord-link-target" style="color: #a5b4fc;"><i class="fa-brands fa-discord"></i> Discord</a>
+            </nav>
+
+            <div class="nav-user-actions">
+                <!-- Guest View (Not Logged In) -->
+                <div id="navGuestBox" style="display: flex; gap: 8px; align-items: center;">
+                    <button class="btn btn-secondary btn-sm" onclick="openModal('loginModal')">
+                        <i class="fa-solid fa-right-to-bracket"></i> เข้าสู่ระบบ
+                    </button>
+                    <button class="btn btn-primary btn-sm" onclick="openModal('registerModal')">
+                        <i class="fa-solid fa-user-plus"></i> สมัครสมาชิก
+                    </button>
+                </div>
+
+                <!-- Member View (Logged In) -->
+                <div id="navUserBox" class="hide" style="display: flex; gap: 10px; align-items: center;">
+                    <div class="user-badge" id="userWalletBadge">
+                        <div class="wallet-icon"><i class="fa-solid fa-user text-neon-cyan"></i></div>
+                        <div class="wallet-info">
+                            <span class="wallet-label" id="userDisplayName">สมาชิก</span>
+                            <span class="wallet-amount" id="userBalanceText">฿0.00</span>
+                        </div>
+                        <button class="btn-topup-mini" onclick="openModal('topupModal')" title="เติมเงิน">
+                            <i class="fa-solid fa-plus"></i>
+                        </button>
+                    </div>
+                    <button class="btn btn-secondary btn-sm" style="color: #ff4757; border-color: rgba(255, 71, 87, 0.4); padding: 8px 12px;" onclick="userLogout()" title="ออกจากระบบ">
+                        <i class="fa-solid fa-right-from-bracket"></i> <span class="hide-mobile">ออก</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="main-wrapper">
+        <!-- Hero Section -->
+        <section class="hero-section">
+            <div class="hero-banner-card">
+                <div class="hero-image-wrap">
+                    <img src="assets/images/banner.jpg?v=2" alt="Unique HUB Store Hero Banner" class="hero-banner-img">
+                    <div class="hero-overlay"></div>
+                </div>
+                <div class="hero-content">
+                    <div class="hero-tag"><i class="fa-solid fa-cube"></i> UNIQUE HUB STORE 24/7</div>
+                    <h1 class="hero-title">ยินดีต้อนรับสู่ <span class="text-neon-cyan">Unique HUB Store</span></h1>
+                    <p class="hero-desc">ศูนย์รวมสินค้าและบริการเกมออนไลน์อัตโนมัติ ส่งสินค้าฉับไว ปลอดภัย 100% พร้อมระบบจัดการสต็อกระดับมืออาชีพ</p>
+                    <div class="hero-buttons">
+                        <a href="#shop" class="btn btn-primary"><i class="fa-solid fa-cart-shopping"></i> ดูสินค้าทั้งหมด</a>
+                        <button onclick="openModal('topupModal')" class="btn btn-secondary"><i class="fa-solid fa-wallet"></i> เติมเงินเข้ากระเป๋า</button>
+                        <a href="https://discord.gg/3BsH362aEJ" target="_blank" rel="noopener noreferrer" class="btn btn-discord discord-link-target"><i class="fa-brands fa-discord"></i> ติดต่อ Discord ร้าน</a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Stats Bar -->
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-icon"><i class="fa-solid fa-boxes-stacked"></i></div>
+                    <div class="stat-data">
+                        <h3 class="stat-value" id="statStock">0</h3>
+                        <p class="stat-label">สินค้าในระบบ</p>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon"><i class="fa-solid fa-shield-halved"></i></div>
+                    <div class="stat-data">
+                        <h3 class="stat-value">100%</h3>
+                        <p class="stat-label">ปลอดภัย & ส่งทันที</p>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon"><i class="fa-solid fa-bolt-lightning"></i></div>
+                    <div class="stat-data">
+                        <h3 class="stat-value">&lt; 1s</h3>
+                        <p class="stat-label">ระบบส่งของอัตโนมัติ</p>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon"><i class="fa-solid fa-headset"></i></div>
+                    <div class="stat-data">
+                        <h3 class="stat-value">24/7</h3>
+                        <p class="stat-label">เปิดบริการตลอดเวลา</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Store / Products Section -->
+        <section class="shop-section" id="shop">
+            <div class="section-header">
+                <div class="section-title-wrap">
+                    <span class="sub-title"><i class="fa-solid fa-tag"></i> PRODUCTS CATALOG</span>
+                    <h2 class="section-title">คลังสินค้า <span class="text-neon-cyan">Unique HUB</span></h2>
+                </div>
+                <!-- Categories filter -->
+                <div class="category-tabs" id="categoryTabs">
+                    <button class="tab-btn active" onclick="filterCategory('all', this)">
+                        <i class="fa-solid fa-border-all"></i> ทั้งหมด
+                    </button>
+                    <button class="tab-btn" onclick="filterCategory('scripts', this)">
+                        <i class="fa-solid fa-code"></i> Script Roblox
+                    </button>
+                    <button class="tab-btn" onclick="filterCategory('accounts', this)">
+                        <i class="fa-solid fa-user-shield"></i> ไอดีเกม
+                    </button>
+                    <button class="tab-btn" onclick="filterCategory('items', this)">
+                        <i class="fa-solid fa-fire"></i> ไอเทม & ของในเกม
+                    </button>
+                    <button class="tab-btn" onclick="filterCategory('services', this)">
+                        <i class="fa-solid fa-wand-magic-sparkles"></i> บริการอื่นๆ
+                    </button>
+                </div>
+            </div>
+
+            <!-- Product Cards Grid -->
+            <div class="products-grid" id="productsGrid">
+                <!-- Dynamically populated or clean empty state -->
+            </div>
+        </section>
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="footer-container">
+            <div class="footer-brand">
+                <div class="nav-logo">
+                    <img src="assets/images/logo.png" alt="Unique HUB Store" class="nav-logo-img">
+                    <span class="logo-text">UNIQUE <span class="highlight">HUB</span> STORE</span>
+                </div>
+                <p class="footer-slogan">เว็บจำหน่ายสินค้าและบริการอัตโนมัติอันดับ 1 รวดเร็ว ปลอดภัย เปิดบริการ 24 ชม.</p>
+            </div>
+            <div class="footer-links">
+                <h4>เมนูลัด</h4>
+                <a href="#shop">หน้าร้านค้า</a>
+                <a href="javascript:void(0)" onclick="openModal('topupModal')">เติมเงินเข้าสู่ระบบ</a>
+                <a href="javascript:void(0)" onclick="openModal('historyModal')">ประวัติการสั่งซื้อ</a>
+            </div>
+            <div class="footer-links">
+                <h4>ความช่วยเหลือ & ความปลอดภัย</h4>
+                <a href="javascript:void(0)" onclick="openModal('topupModal')">วิธีเติมเงินพร้อมเพย์ QR Code</a>
+                <a href="https://discord.gg/3BsH362aEJ" target="_blank" rel="noopener noreferrer" class="discord-link-target"><i class="fa-brands fa-discord text-neon-cyan"></i> ติดต่อแอดมิน Discord</a>
+                <span><i class="fa-solid fa-lock"></i> SSL Secured 256-bit</span>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <p>© 2026 Unique HUB Store. All rights reserved. Automated Game Services 24/7.</p>
+        </div>
+    </footer>
+
+    <!-- ==================== MODALS ==================== -->
+
+    <!-- Modal: Top-up / เติมเงิน -->
+    <div class="modal-backdrop" id="topupModal">
+        <div class="modal-card">
+            <div class="modal-header">
+                <h3><i class="fa-solid fa-qrcode text-neon-cyan"></i> เติมเงินพร้อมเพย์ QR Code (เช็คสลิปออโต้)</h3>
+                <button class="modal-close-btn" onclick="closeModal('topupModal')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div style="text-align: center; margin-bottom: 14px;">
+                    <p style="font-size: 0.88rem; color: var(--text-muted);">
+                        ใส่จำนวนเงิน โอนเงินผ่าน Mobile Banking แล้วแนบสลิป ระบบจะเช็คสลิปและปรับเครดิตให้อัตโนมัติทันที
+                    </p>
+                </div>
+
+                <!-- Amount Preset Chips -->
+                <div class="test-btn-group" style="justify-content: center; margin-bottom: 12px;">
+                    <button class="btn-chip" onclick="setPromptPayAmount(50)">50 ฿</button>
+                    <button class="btn-chip" onclick="setPromptPayAmount(100)">100 ฿</button>
+                    <button class="btn-chip" onclick="setPromptPayAmount(150)">150 ฿</button>
+                    <button class="btn-chip" onclick="setPromptPayAmount(300)">300 ฿</button>
+                    <button class="btn-chip" onclick="setPromptPayAmount(500)">500 ฿</button>
+                </div>
+
+                <div class="form-group" style="max-width: 300px; margin: 0 auto 12px;">
+                    <label style="font-size: 0.82rem; color: var(--text-muted); text-align: center; display: block;">จำนวนเงินที่ต้องการเติม (บาท):</label>
+                    <input type="number" id="promptpayAmountInput" value="100" min="1" style="text-align: center; font-size: 1.4rem; font-weight: bold; color: var(--neon-cyan); font-family: var(--font-orbitron);" oninput="updatePromptPayQR()">
+                </div>
+
+                <!-- Generated Dynamic QR Code -->
+                <div style="text-align: center; margin-bottom: 12px;">
+                    <div style="background: #ffffff; padding: 12px; border-radius: 12px; display: inline-block; box-shadow: 0 0 25px rgba(0, 240, 255, 0.35);">
+                        <img id="promptpayQrImg" src="" alt="PromptPay QR Code" style="width: 175px; height: 175px; display: block; object-fit: contain;">
+                    </div>
+                </div>
+
+                <!-- Merchant Account Details -->
+                <div style="background: rgba(0, 0, 0, 0.4); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 10px; padding: 10px 14px; max-width: 380px; margin: 0 auto 14px;">
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 4px; font-size: 0.85rem;">
+                        <span style="color: var(--text-muted);">ชื่อบัญชี:</span>
+                        <strong id="displayPpName" style="color: #fff;">จิตติพัฒน์ ศิลาพจน์</strong>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.85rem;">
+                        <span style="color: var(--text-muted);">เลขพร้อมเพย์:</span>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <strong id="displayPpNumber" style="color: var(--neon-cyan); font-family: var(--font-orbitron); letter-spacing: 1px;">083-492-9303</strong>
+                            <button class="btn-copy" style="padding: 2px 8px; font-size: 0.75rem;" onclick="copyElementText('displayPpNumber')">คัดลอก</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Slip Upload & Instant Auto-Verification Area -->
+                <div style="max-width: 380px; margin: 0 auto;">
+                    <div class="form-group" style="margin-bottom: 10px;">
+                        <label style="font-size: 0.85rem; color: #fff; font-weight: 600;"><i class="fa-solid fa-receipt text-neon-cyan"></i> อัปโหลดรูปสลิปการโอนเงิน (มี QR Code):</label>
+                        <div class="slip-upload-area" onclick="document.getElementById('promptpaySlipInput').click()">
+                            <input type="file" id="promptpaySlipInput" accept="image/*" style="display: none;" onchange="handleSlipAutoScan(event)">
+                            <i class="fa-solid fa-cloud-arrow-up text-neon-cyan" style="font-size: 1.8rem; margin-bottom: 6px;"></i>
+                            <div style="font-size: 0.88rem; color: #fff; font-weight: 500;">คลิกเพื่อเลือกรูปภาพสลิปธนาคาร</div>
+                            <small style="color: var(--text-muted); font-size: 0.75rem;">รองรับไฟล์รูปภาพสลิปทุกธนาคาร (JPG, PNG)</small>
+                        </div>
+
+                        <!-- Scan Status Alert -->
+                        <div id="slipScanStatus" class="hide" style="padding: 9px 12px; border-radius: 8px; font-size: 0.82rem; margin-bottom: 10px; text-align: center;"></div>
+
+                        <!-- Preview Container -->
+                        <div id="slipPreviewContainer" class="slip-preview-box hide">
+                            <img id="slipPreviewImg" class="slip-preview-img" src="" alt="สลิปโอนเงิน">
+                            <div style="margin-top: 4px;">
+                                <button type="button" class="btn btn-secondary btn-sm" style="color: #ff4757; font-size: 0.75rem; padding: 2px 8px;" onclick="clearSlipFile()">
+                                    <i class="fa-solid fa-trash"></i> ลบรูปแล้วเลือกใหม่
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div style="background: rgba(0, 240, 255, 0.06); border: 1px solid rgba(0, 240, 255, 0.25); border-radius: 8px; padding: 10px; margin-bottom: 14px; font-size: 0.78rem; color: #a5f3fc;">
+                        <i class="fa-solid fa-bolt text-neon-yellow"></i> <strong>ระบบเช็คสลิปออโต้:</strong> สแกนและตรวจรหัสสลิปกับระบบธนาคารอัตโนมัติ เครดิตเข้ากระเป๋าทันทีใน 1-2 วินาที (ป้องกันการใช้สลิปซ้ำ 100%)
+                    </div>
+
+                    <button class="btn btn-primary btn-block" id="btnSubmitPromptpay" onclick="processAutoSlipPayment()" style="padding: 13px; font-size: 1.05rem;">
+                        <i class="fa-solid fa-bolt"></i> ตรวจสอบสลิปและรับเครดิตทันที (ออโต้)
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Confirm Purchase / ยืนยันการซื้อ -->
+    <div class="modal-backdrop" id="purchaseModal">
+        <div class="modal-card">
+            <div class="modal-header">
+                <h3><i class="fa-solid fa-cart-shopping text-neon-cyan"></i> ยืนยันการสั่งซื้อ</h3>
+                <button class="modal-close-btn" onclick="closeModal('purchaseModal')">&times;</button>
+            </div>
+            <div class="modal-body" id="purchaseModalBody">
+                <!-- Dynamically populated -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: View Account Received / รับข้อมูลหลังการซื้อ -->
+    <div class="modal-backdrop" id="itemReceivedModal">
+        <div class="modal-card modal-card-success">
+            <div class="modal-header">
+                <h3><i class="fa-solid fa-circle-check text-green"></i> สั่งซื้อสำเร็จ! ส่งมอบสินค้าแล้ว</h3>
+                <button class="modal-close-btn" onclick="closeModal('itemReceivedModal')">&times;</button>
+            </div>
+            <div class="modal-body" id="itemReceivedBody">
+                <!-- Item Account Details with copy buttons -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Order History / ประวัติการซื้อ -->
+    <div class="modal-backdrop" id="historyModal">
+        <div class="modal-card modal-card-lg">
+            <div class="modal-header">
+                <h3><i class="fa-solid fa-clock-rotate-left text-neon-cyan"></i> ประวัติการสั่งซื้อของคุณ</h3>
+                <button class="modal-close-btn" onclick="closeModal('historyModal')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="history-table-wrap">
+                    <table class="history-table">
+                        <thead>
+                            <tr>
+                                <th>เวลา</th>
+                                <th>รายการ</th>
+                                <th>ราคา</th>
+                                <th>ข้อมูลสินค้า / ไอดี</th>
+                                <th>คัดลอก</th>
+                            </tr>
+                        </thead>
+                        <tbody id="historyTableBody">
+                            <!-- Injected by JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Login / เข้าสู่ระบบสมาชิก -->
+    <div class="modal-backdrop" id="loginModal">
+        <div class="modal-card">
+            <div class="modal-header">
+                <h3><i class="fa-solid fa-right-to-bracket text-neon-cyan"></i> เข้าสู่ระบบสมาชิก</h3>
+                <button class="modal-close-btn" onclick="closeModal('loginModal')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div style="text-align: center; margin-bottom: 20px;">
+                    <img src="assets/images/logo.png" style="width: 70px; height: 70px; filter: drop-shadow(0 0 10px var(--neon-cyan));">
+                    <h4 style="margin-top: 10px; color: #fff;">ยินดีต้อนรับสู่ Unique HUB Store</h4>
+                    <p style="font-size: 0.85rem; color: var(--text-muted);">เข้าสู่ระบบเพื่อซื้อสินค้าและจัดการกระเป๋าเงิน</p>
+                </div>
+                <div class="form-group">
+                    <label>ชื่อผู้ใช้งาน (Username):</label>
+                    <input type="text" id="loginUsername" placeholder="กรอกชื่อผู้ใช้..." autocomplete="username">
+                </div>
+                <div class="form-group">
+                    <label>รหัสผ่าน (Password):</label>
+                    <input type="password" id="loginPassword" placeholder="กรอกรหัสผ่าน..." autocomplete="current-password" onkeydown="if(event.key==='Enter') submitLogin()">
+                </div>
+                <button class="btn btn-primary btn-block" onclick="submitLogin()" style="margin-top: 10px;">
+                    <i class="fa-solid fa-arrow-right-to-bracket"></i> เข้าสู่ระบบ
+                </button>
+                <div style="text-align: center; margin-top: 18px; font-size: 0.85rem; color: var(--text-muted);">
+                    ยังไม่มีบัญชีสมาชิก? 
+                    <a href="javascript:void(0)" onclick="closeModal('loginModal'); openModal('registerModal');" style="color: var(--neon-cyan); font-weight: 600; text-decoration: none;">
+                        สมัครสมาชิกใหม่ที่นี่
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Register / สมัครสมาชิก -->
+    <div class="modal-backdrop" id="registerModal">
+        <div class="modal-card">
+            <div class="modal-header">
+                <h3><i class="fa-solid fa-user-plus text-neon-green"></i> สมัครสมาชิกใหม่</h3>
+                <button class="modal-close-btn" onclick="closeModal('registerModal')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div style="text-align: center; margin-bottom: 20px;">
+                    <img src="assets/images/logo.png" style="width: 70px; height: 70px; filter: drop-shadow(0 0 10px var(--neon-cyan));">
+                    <h4 style="margin-top: 10px; color: #fff;">สร้างบัญชีสมาชิกฟรี</h4>
+                    <p style="font-size: 0.85rem; color: var(--text-muted);">สมัครสมาชิกเพื่อเติมเงินและรับสคริปต์อัตโนมัติ 24 ชม.</p>
+                </div>
+                <div class="form-group">
+                    <label>ตั้งชื่อผู้ใช้งาน (Username):</label>
+                    <input type="text" id="regUsername" placeholder="ภาษาอังกฤษหรือตัวเลข (3 ตัวขึ้นไป)..." autocomplete="username">
+                </div>
+                <div class="form-group">
+                    <label>ตั้งรหัสผ่าน (Password):</label>
+                    <input type="password" id="regPassword" placeholder="ความยาวอย่างน้อย 4 ตัวอักษร..." autocomplete="new-password">
+                </div>
+                <div class="form-group">
+                    <label>ยืนยันรหัสผ่านอีกครั้ง:</label>
+                    <input type="password" id="regConfirmPassword" placeholder="พิมพ์รหัสผ่านซ้ำอีกครั้ง..." autocomplete="new-password" onkeydown="if(event.key==='Enter') submitRegister()">
+                </div>
+                <button class="btn btn-primary btn-block" onclick="submitRegister()" style="margin-top: 10px;">
+                    <i class="fa-solid fa-user-check"></i> ยืนยันการสมัครสมาชิก
+                </button>
+                <div style="text-align: center; margin-top: 18px; font-size: 0.85rem; color: var(--text-muted);">
+                    มีบัญชีอยู่แล้ว? 
+                    <a href="javascript:void(0)" onclick="closeModal('registerModal'); openModal('loginModal');" style="color: var(--neon-cyan); font-weight: 600; text-decoration: none;">
+                        เข้าสู่ระบบที่นี่
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Floating Discord Widget -->
+    <a href="https://discord.gg/3BsH362aEJ" target="_blank" rel="noopener noreferrer" class="floating-discord-btn discord-link-target" title="ติดต่อสอบถามทาง Discord">
+        <div class="discord-pulse"></div>
+        <i class="fa-brands fa-discord"></i>
+        <span class="discord-label">ติดต่อ Discord ร้าน</span>
+    </a>
+
+    <!-- Toast Notification Popup -->
+    <div id="toastContainer" class="toast-container"></div>
+
+    <!-- Scripts -->
+    <script src="app.js"></script>
+</body>
+</html>
