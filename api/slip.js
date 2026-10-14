@@ -93,14 +93,32 @@ export default async function handler(req, res) {
                     slipokUrl = `https://api.slipok.com/api/line/apikey/${slipokUrl}`;
                 }
 
-                const slipokRes = await fetch(slipokUrl, {
-                    method: 'POST',
-                    headers: {
-                        'x-authorization': paySettings.slipokApiKey.trim(),
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({ data: cleanBase64, log: true })
-                });
+                let slipokRes;
+                if (qrData && qrData.length > 10) {
+                    // Send decoded QR string directly (Official SlipOK standard payload)
+                    slipokRes = await fetch(slipokUrl, {
+                        method: 'POST',
+                        headers: {
+                            'x-authorization': paySettings.slipokApiKey.trim(),
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ data: qrData, log: true })
+                    });
+                } else {
+                    // Fallback: send as image file
+                    const buffer = Buffer.from(cleanBase64, 'base64');
+                    const formData = new FormData();
+                    formData.append('files', new Blob([buffer], { type: 'image/jpeg' }), 'slip.jpg');
+                    formData.append('log', 'true');
+
+                    slipokRes = await fetch(slipokUrl, {
+                        method: 'POST',
+                        headers: {
+                            'x-authorization': paySettings.slipokApiKey.trim()
+                        },
+                        body: formData
+                    });
+                }
 
                 const slipokData = await slipokRes.json();
                 if (!slipokData || !slipokData.success || !slipokData.data) {
