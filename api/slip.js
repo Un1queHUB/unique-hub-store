@@ -124,31 +124,34 @@ export default async function handler(req, res) {
                 return res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาดในการเชื่อมต่อ SlipOK' });
             }
         } else {
-            // 3. Built-in Thai Bank Mini-QR Verification
-            if (!qrData || typeof qrData !== 'string' || qrData.length < 20) {
+            // 3. Built-in Thai Bank Mini-QR Verification (Supports Krungthai, SCB, KBank, GSB, BBL, BAY, TTB, BAAC)
+            if (!qrData || typeof qrData !== 'string' || qrData.length < 10) {
                 return res.status(400).json({
                     success: false,
                     message: 'ไม่พบ QR Code สลิปธนาคาร! กรุณาอัปโหลดรูปสลิปที่มี QR Code ชัดเจน'
                 });
             }
 
-            // Thai QR Slip standard payload check (EMVCo identifier usually starts with 000400000100)
-            if (!qrData.includes('000400000100') && !qrData.includes('000201') && !qrData.includes('promptpay')) {
-                return res.status(400).json({
-                    success: false,
-                    message: 'QR Code นี้ไม่ใช่สลิปโอนเงินของธนาคารไทย กรุณาใช้สลิปโอนเงินที่มี QR Code จากแอปธนาคาร'
-                });
-            }
-
-            // Extract transRef from QR Data (standard Tag 02 or string hash)
-            const tag02Match = qrData.match(/02([0-9]{2})([a-zA-Z0-9]+)/);
+            // Extract transRef from QR Data (standard Tag 02 or client signature)
+            const tag02Match = qrData.match(/02([0-9]{2})([a-zA-Z0-9_-]+)/);
             if (tag02Match && tag02Match[2]) {
                 const len = parseInt(tag02Match[1], 10);
                 transRef = tag02Match[2].substring(0, len);
             } else {
-                // Generate consistent hash signature from the QR payload
-                transRef = qrData.substring(0, 45);
+                const clean = qrData.replace(/[^a-zA-Z0-9_-]/g, '');
+                transRef = clean.length >= 10 ? clean.slice(-25) : qrData.substring(0, 45);
             }
+
+            // Extract bank code if present (Tag 01)
+            const tag01Match = qrData.match(/01([0-9]{2})([0-9]+)/);
+            if (tag01Match && tag01Match[2]) {
+                sendingBank = tag01Match[2];
+            }
+        }
+
+        const transRefFromClient = body.transRef || body.trans_ref || '';
+        if (!transRef && transRefFromClient) {
+            transRef = transRefFromClient;
         }
 
         if (!transRef) {

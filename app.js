@@ -1191,7 +1191,9 @@ async function processAutoSlipPayment() {
                     qrData: scannedSlipQRData || '',
                     qr_data: scannedSlipQRData || '',
                     imageBase64: currentSlipBase64,
-                    slip_image: currentSlipBase64
+                    slip_image: currentSlipBase64,
+                    transRef: scannedSlipTransRef || '',
+                    trans_ref: scannedSlipTransRef || ''
                 })
             });
         } catch(netErr) {
