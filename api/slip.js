@@ -88,10 +88,15 @@ export default async function handler(req, res) {
                 let cleanBase64 = imageBase64 || '';
                 if (cleanBase64.includes(',')) cleanBase64 = cleanBase64.split(',')[1];
 
-                const slipokRes = await fetch(`https://api.slipok.com/api/line/apikey/${paySettings.slipokBranchId}`, {
+                let slipokUrl = paySettings.slipokBranchId.trim();
+                if (!slipokUrl.startsWith('http')) {
+                    slipokUrl = `https://api.slipok.com/api/line/apikey/${slipokUrl}`;
+                }
+
+                const slipokRes = await fetch(slipokUrl, {
                     method: 'POST',
                     headers: {
-                        'x-authorization': paySettings.slipokApiKey,
+                        'x-authorization': paySettings.slipokApiKey.trim(),
                         'Content-Type': 'application/json'
                     },
                     body: JSON.stringify({ data: cleanBase64, log: true })
@@ -111,12 +116,18 @@ export default async function handler(req, res) {
                 sendingBank = slipDetails.sendingBank || '';
 
                 // Verify receiver account or promptpay
-                const receiverAcc = slipDetails.receiver?.account?.bank?.account || slipDetails.receiver?.account?.proxy?.account || '';
+                const receiverAcc = (slipDetails.receiver?.account?.bank?.account || slipDetails.receiver?.account?.proxy?.account || slipDetails.receiver?.account?.value || '').replace(/[^0-9]/g, '');
+                const receiverName = slipDetails.receiver?.displayName || slipDetails.receiver?.name || '';
                 const cleanMerchantPhone = (paySettings.promptpayNumber || '0834929303').replace(/[^0-9]/g, '');
-                if (receiverAcc && !receiverAcc.includes(cleanMerchantPhone.slice(-4))) {
+                const merchantName = paySettings.promptpayName || 'จิตติพัฒน์';
+
+                const phoneMatches = receiverAcc ? receiverAcc.includes(cleanMerchantPhone.slice(-4)) : false;
+                const nameMatches = receiverName ? receiverName.includes(merchantName.split(' ')[0]) : false;
+
+                if (receiverAcc && !phoneMatches && !nameMatches) {
                     return res.status(400).json({
                         success: false,
-                        message: 'สลิปนี้ไม่ได้โอนเข้าบัญชีร้านค้า Unique HUB (เลขบัญชีปลายทางไม่ตรงกัน)'
+                        message: 'สลิปนี้ไม่ได้โอนเข้าบัญชีร้านค้า Unique HUB (เลขบัญชีหรือชื่อปลายทางไม่ตรงกัน)'
                     });
                 }
             } catch (slipErr) {
