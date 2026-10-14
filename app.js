@@ -12,7 +12,7 @@ const DEFAULT_PRODUCTS = [
     "category": "scripts",
     "price": 29,
     "originalPrice": 59,
-    "image": "assets/images/banner.jpg",
+    "image": "assets/images/unique สินค้า aimbot 1วัน.jpg",
     "tag": "ส่งออโต้ 24 ชม.",
     "desc": "สคริปต์ Aimbot Roblox ใช้งานได้ 1 วัน ระบบล็อคหัวแม่นยำ ล็อคเป้าอัตโนมัติ ปลอดภัย 100%",
     "stock": [
@@ -27,7 +27,7 @@ const DEFAULT_PRODUCTS = [
     "category": "scripts",
     "price": 79,
     "originalPrice": 129,
-    "image": "assets/images/banner.jpg",
+    "image": "assets/images/unique สินค้า aimbot 7วัน.jpg",
     "tag": "สุดคุ้ม",
     "desc": "สคริปต์ Aimbot Roblox ใช้งานได้ 7 วัน ปรับแต่งระยะ FOV และความไวในการล็อคได้ตามใจชอบ",
     "stock": [
@@ -41,7 +41,7 @@ const DEFAULT_PRODUCTS = [
     "category": "scripts",
     "price": 199,
     "originalPrice": 350,
-    "image": "assets/images/banner.jpg",
+    "image": "assets/images/unique สินค้า aimbot 30วัน.jpg",
     "tag": "ขายดี",
     "desc": "สคริปต์ Aimbot Roblox แพ็กเกจ 30 วัน อัปเดตฟรีตลอดอายุการใช้งาน ใช้งานลื่นไหลไม่มีกระตุก",
     "stock": [
@@ -55,7 +55,7 @@ const DEFAULT_PRODUCTS = [
     "category": "scripts",
     "price": 399,
     "originalPrice": 699,
-    "image": "assets/images/banner.jpg",
+    "image": "assets/images/unique สินค้า aimbot ถาวร.jpg",
     "tag": "ถาวร VIP",
     "desc": "สคริปต์ Aimbot Roblox ถาวรตลอดชีพ ล็อคหัวทุกเกม มีทีมงานซัพพอร์ตคอยดูแลและอัปเดตต่อเนื่อง",
     "stock": [
@@ -69,7 +69,7 @@ const DEFAULT_PRODUCTS = [
     "category": "scripts",
     "price": 150,
     "originalPrice": 280,
-    "image": "assets/images/banner.jpg",
+    "image": "assets/images/unique สินค้า fishing ถาวร.jpg",
     "tag": "ยอดฮิต",
     "desc": "สคริปต์ตกปลาออโต้ ออโต้ขายปลา ถาวรตลอดชีพ ฟาร์มเวลฟาร์มเหรียญไว ปล่อยบอทได้ 24 ชม.",
     "stock": [
