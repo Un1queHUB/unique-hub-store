@@ -124,11 +124,14 @@
 
                     <div class="admin-stat-card">
                         <div class="admin-stat-icon" style="background: rgba(16, 185, 129, 0.15); color: var(--neon-green);">
-                            <i class="fa-solid fa-wallet"></i>
+                            <i class="fa-solid fa-money-bill-trend-up"></i>
                         </div>
                         <div>
-                            <span style="font-size: 0.8rem; color: var(--text-muted);">ยอดเงินรวมในระบบ</span>
-                            <h3 id="statTotalBalance" style="color: var(--neon-green); font-family: var(--font-orbitron); font-size: 1.5rem;">฿0.00</h3>
+                            <span style="font-size: 0.8rem; color: var(--text-muted);">ยอดขายรวมทั้งหมด</span>
+                            <h3 id="statTotalRevenue" style="color: var(--neon-green); font-family: var(--font-orbitron); font-size: 1.5rem;">฿0.00</h3>
+                            <div style="font-size: 0.72rem; color: var(--text-muted); margin-top: 2px;">
+                                เครดิตคงเหลือในระบบ: <strong id="statTotalBalance" style="color: #a5f3fc;">฿0.00</strong>
+                            </div>
                         </div>
                     </div>
 
@@ -509,10 +512,61 @@
 
             <!-- Tab 9: Backup & Restore Data (สำรองและนำเข้าข้อมูล) -->
             <div class="admin-tab-content hide" id="backupTab">
+                <!-- Firebase Realtime Database Status & Setup Card -->
+                <div style="background: rgba(255, 153, 0, 0.05); border: 1px solid rgba(255, 153, 0, 0.35); border-radius: 12px; padding: 24px; max-width: 780px; margin-bottom: 24px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; flex-wrap: wrap; gap: 10px;">
+                        <div>
+                            <h4 style="color: #fff; margin: 0 0 4px 0;"><i class="fa-solid fa-fire text-neon-yellow"></i> ระบบ Real-time Cloud Database (Firebase)</h4>
+                            <p style="font-size: 0.82rem; color: var(--text-muted); margin: 0;">อัปเดตข้อมูลสินค้า สต็อก ออเดอร์ ยอดเงินผู้ใช้ Real-time ทันทีระดับมิลลิวินาที <strong>ไม่ต้องอัปไฟล์ขึ้น GitHub</strong></p>
+                        </div>
+                        <span id="adminFirebaseStatusBadge" style="background: rgba(255, 153, 0, 0.2); color: #ffca28; padding: 6px 14px; border-radius: 20px; font-size: 0.82rem; font-weight: 600; display: inline-flex; align-items: center; gap: 6px;">
+                            <i class="fa-solid fa-spinner fa-spin"></i> กำลังตรวจสอบ...
+                        </span>
+                    </div>
+
+                    <div style="background: rgba(0, 0, 0, 0.4); border-radius: 8px; padding: 16px; margin-bottom: 16px; border: 1px solid rgba(255, 255, 255, 0.08);">
+                        <label style="font-size: 0.85rem; color: var(--text-muted); display: block; margin-bottom: 8px;">
+                            <i class="fa-solid fa-code text-neon-cyan"></i> วางค่า Firebase Config ที่ได้จาก Firebase Console (หรือแก้ไขในไฟล์ <code>firebase-config.js</code> โดยตรง):
+                        </label>
+                        <textarea id="adminFirebaseConfigInput" rows="6" placeholder='วางโค้ดตรงนี้ เช่น:
+const firebaseConfig = {
+  apiKey: "AIzaSy...",
+  databaseURL: "https://my-project-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "my-project",
+  ...
+};' style="font-family: monospace; font-size: 0.82rem; width: 100%; background: rgba(0,0,0,0.6); color: #00f0ff; border: 1px solid rgba(0, 240, 255, 0.2); border-radius: 6px; padding: 10px; box-sizing: border-box;"></textarea>
+                        
+                        <div style="display: flex; gap: 10px; margin-top: 12px; flex-wrap: wrap;">
+                            <button class="btn btn-primary btn-sm" onclick="saveAdminFirebaseConfig()">
+                                <i class="fa-solid fa-cloud-arrow-up"></i> บันทึกและเชื่อมต่อ Firebase ทันที
+                            </button>
+                            <button class="btn btn-secondary btn-sm" onclick="testAdminFirebaseConnection()">
+                                <i class="fa-solid fa-vial"></i> ทดสอบการส่งข้อมูล Real-time
+                            </button>
+                            <button class="btn btn-danger btn-sm" onclick="resetAdminFirebaseConfig()" title="รีเซ็ตกลับเป็นค่าเริ่มต้น">
+                                <i class="fa-solid fa-rotate-left"></i> ล้างการตั้งค่า
+                            </button>
+                        </div>
+                    </div>
+
+                    <details style="background: rgba(255,255,255,0.02); border-radius: 8px; padding: 10px 14px; border: 1px solid rgba(255,255,255,0.06); font-size: 0.82rem; color: var(--text-muted);">
+                        <summary style="cursor: pointer; color: var(--neon-cyan); font-weight: 600;">
+                            <i class="fa-solid fa-circle-question"></i> วิธีสร้าง Firebase Realtime Database ฟรีใน 2 นาที (คลิกเพื่อดูขั้นตอน)
+                        </summary>
+                        <ol style="margin: 10px 0 0 20px; padding: 0; line-height: 1.6;">
+                            <li>ไปที่ <a href="https://console.firebase.google.com" target="_blank" style="color: #ff9900;">console.firebase.google.com</a> แล้วล็อกอินด้วย Gmail</li>
+                            <li>กด <strong>Add project</strong> ตั้งชื่อโปรเจกต์ (เช่น unique-store) -> กด Continue ข้ามไปจนเสร็จ</li>
+                            <li>เมนูด้านซ้าย เลือก <strong>Build</strong> -> <strong>Realtime Database</strong> -> กด <strong>Create Database</strong> (เลือก Server สิงคโปร์ <code>asia-southeast1</code>)</li>
+                            <li>ในแท็บ <strong>Rules</strong>: ให้เปลี่ยน <code>".read": true, ".write": true</code> แล้วกด <strong>Publish</strong></li>
+                            <li>กดที่รูปเฟือง ⚙️ ด้านซ้ายบน (Project settings) -> เลื่อนลงมาล่างสุดตรง <strong>Your apps</strong> -> กดไอคอนเว็บ <code>&lt;/&gt;</code> -> ก๊อปปี้ <code>firebaseConfig</code> มาวางที่ช่องด้านบนนี้ได้เลย!</li>
+                        </ol>
+                    </details>
+                </div>
+
                 <div style="background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(0, 240, 255, 0.3); border-radius: 12px; padding: 24px; max-width: 780px;">
                     <h4 style="color: #fff; margin-bottom: 8px;"><i class="fa-solid fa-database text-neon-cyan"></i> สำรอง & นำเข้าข้อมูลระบบ (Sync & Backup)</h4>
                     <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 16px;">
-                        ดาวน์โหลดข้อมูลเก็บไว้ในเครื่องเพื่อนำไปวางในโฟลเดอร์ <code>ทำเว็ป</code> บน Vercel หรือกู้คืนข้อมูล
+                        ดาวน์โหลดข้อมูลเก็บไว้ในเครื่องเป็นไฟล์สำรอง (Backup) หรือกู้คืนข้อมูล
                     </p>
                     <div style="display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap;">
                         <button class="btn btn-primary btn-sm" onclick="downloadProductsJson()">
@@ -765,6 +819,12 @@
     <!-- Toast Notification Popup -->
     <div id="toastContainer" class="toast-container"></div>
 
+    <!-- Firebase Realtime Database SDK -->
+    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
+    <script src="firebase-config.js"></script>
+
+    <!-- Admin Logic -->
     <script src="admin.js"></script>
 </body>
 </html>

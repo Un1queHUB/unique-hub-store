@@ -19,13 +19,23 @@ let adminStoreSettings = {
     discordUrl: 'https://discord.gg/3BsH362aEJ'
 };
 
-// ================= CLOUD DATABASE SYNC SYSTEM ================= //
+// ================= CLOUD DATABASE SYNC SYSTEM (FIREBASE REALTIME + UPSTASH FALLBACK) ================= //
 const DIRECT_UPSTASH_URL = 'https://upright-mite-232089.upstash.io';
 const DIRECT_UPSTASH_TOKEN = 'gQAAAAAAA4qZAQIgcDEyMDA3ODI0NWEyYTg0MGIzOTdmZjJmY2ZmMjY1NjM5Mg';
 const CLOUD_DB_API = '/api/db';
 
 async function fetchCloudData(key) {
-    // 1. Direct Upstash REST via query param ?_token (CORS friendly, works on file://, localhost, Vercel, Brave Shields)
+    // 1. Try Firebase Realtime Database first (Sub-100ms)
+    if (typeof isFirebaseReady === 'function' && isFirebaseReady()) {
+        try {
+            const fbVal = await fbGetData(key);
+            if (fbVal !== null && fbVal !== undefined) return fbVal;
+        } catch (e) {
+            console.warn('[Admin] Firebase GET fallback to Upstash:', e);
+        }
+    }
+
+    // 2. Direct Upstash REST via query param ?_token (CORS friendly, works on file://, localhost, Vercel, Brave Shields)
     try {
         const url = `${DIRECT_UPSTASH_URL}/get/${encodeURIComponent(key)}?_token=${DIRECT_UPSTASH_TOKEN}&_t=${Date.now()}`;
         const res = await fetch(url, { method: 'GET', mode: 'cors', cache: 'no-store' });
@@ -43,7 +53,7 @@ async function fetchCloudData(key) {
         console.warn('Direct Upstash GET failed, trying fallback:', e);
     }
 
-    // 2. Fallback to /api/db proxy if running on Vercel
+    // 3. Fallback to /api/db proxy if running on Vercel
     if (window.location.protocol.startsWith('http')) {
         try {
             const res = await fetch(`${CLOUD_DB_API}?key=${encodeURIComponent(key)}&_t=${Date.now()}`, { cache: 'no-store' });
@@ -58,9 +68,19 @@ async function fetchCloudData(key) {
 }
 
 async function saveCloudData(key, data) {
-    const stringData = typeof data === 'string' ? data : JSON.stringify(data);
+    let firebaseSuccess = false;
 
-    // 1. Direct Upstash REST via query param ?_token with text/plain (CORS safelisted)
+    // 1. Save to Firebase Realtime Database
+    if (typeof isFirebaseReady === 'function' && isFirebaseReady()) {
+        try {
+            firebaseSuccess = await fbSetData(key, data);
+        } catch (e) {
+            console.warn('[Admin] Firebase SET failed, trying Upstash:', e);
+        }
+    }
+
+    // 2. Also save to Upstash REST as backup/sync
+    const stringData = typeof data === 'string' ? data : JSON.stringify(data);
     try {
         const url = `${DIRECT_UPSTASH_URL}/set/${encodeURIComponent(key)}?_token=${DIRECT_UPSTASH_TOKEN}`;
         const res = await fetch(url, {
@@ -74,7 +94,7 @@ async function saveCloudData(key, data) {
         console.warn('Direct Upstash POST failed, trying fallback:', e);
     }
 
-    // 2. Fallback to /api/db proxy
+    // 3. Fallback to /api/db proxy
     if (window.location.protocol.startsWith('http')) {
         try {
             const res = await fetch(CLOUD_DB_API, {
@@ -86,7 +106,7 @@ async function saveCloudData(key, data) {
         } catch (e) {}
     }
 
-    return false;
+    return firebaseSuccess;
 }
 
 const categoryLabels = {
@@ -252,9 +272,24 @@ async function loadAdminData(isManual = false) {
         const cloudOrders = await fetchCloudData('unique_all_orders');
         if (Array.isArray(cloudOrders)) {
             adminAllOrders = cloudOrders;
-            localStorage.setItem('unique_all_orders', JSON.stringify(adminAllOrders));
-            renderOrdersTable();
         }
+
+        // Auto-consolidate all orders from user histories to ensure no order is ever missed
+        const orderMap = new Map();
+        (adminAllOrders || []).forEach(o => { if (o && o.id) orderMap.set(o.id, o); });
+        (adminUsers || []).forEach(u => {
+            if (u && Array.isArray(u.history)) {
+                u.history.forEach(h => {
+                    if (h && h.id && !orderMap.has(h.id)) {
+                        orderMap.set(h.id, { ...h, username: h.username || u.username });
+                    }
+                });
+            }
+        });
+        adminAllOrders = Array.from(orderMap.values());
+        adminAllOrders.sort((a, b) => (b.time || '').localeCompare(a.time || '') || (b.id || '').localeCompare(a.id || ''));
+        localStorage.setItem('unique_all_orders', JSON.stringify(adminAllOrders));
+        renderOrdersTable();
 
         const cloudPay = await fetchCloudData('unique_payment_settings');
         if (cloudPay && cloudPay.promptpayNumber) {
@@ -314,6 +349,7 @@ function renderDashboardOverview() {
     // 1. Stats calculation
     const totalUsers = adminUsers.length;
     const totalBalance = adminUsers.reduce((sum, u) => sum + (parseFloat(u.balance) || 0), 0);
+    const totalRevenue = adminAllOrders.reduce((sum, ord) => sum + (parseFloat(ord.price) || 0), 0);
     
     let totalStockCount = 0;
     adminProducts.forEach(p => {
@@ -325,6 +361,7 @@ function renderDashboardOverview() {
 
     // 2. Set stats cards
     const uEl = document.getElementById('statTotalUsers');
+    const revEl = document.getElementById('statTotalRevenue');
     const bEl = document.getElementById('statTotalBalance');
     const sEl = document.getElementById('statTotalStock');
     const oEl = document.getElementById('statTotalOrders');
@@ -332,6 +369,7 @@ function renderDashboardOverview() {
     const badgeEl = document.getElementById('pendingTopupBadge');
 
     if (uEl) uEl.textContent = totalUsers.toLocaleString();
+    if (revEl) revEl.textContent = `฿${totalRevenue.toFixed(2)}`;
     if (bEl) bEl.textContent = `฿${totalBalance.toFixed(2)}`;
     if (sEl) sEl.textContent = `${totalStockCount.toLocaleString()} ชิ้น (${adminProducts.length} รายการ)`;
     if (oEl) oEl.textContent = `${totalOrders.toLocaleString()} รายการ`;
@@ -1295,13 +1333,236 @@ window.addEventListener('storage', (e) => {
     }
 });
 
-// 2.5-second live background polling to auto-sync with online cloud database
+// ================= FIREBASE REALTIME LISTENERS & ADMIN CONTROLS ================= //
+
+let firebaseListenersAttached = false;
+
+function initAdminFirebaseListeners() {
+    if (firebaseListenersAttached) return;
+    if (typeof isFirebaseReady !== 'function' || !isFirebaseReady()) return;
+
+    firebaseListenersAttached = true;
+    console.log('🔥 [Admin] เปิดใช้งาน Real-time Listeners (Firebase)');
+
+    // 1. Live Sync Users
+    fbOnData('unique_users', (cloudUsers) => {
+        if (Array.isArray(cloudUsers)) {
+            adminUsers = cloudUsers;
+            localStorage.setItem('unique_users', JSON.stringify(cloudUsers));
+            renderUsersTable();
+            renderDashboardOverview();
+        }
+    });
+
+    // 2. Live Sync Topup Requests (Real-time bell notification)
+    fbOnData('unique_topup_requests', (cloudTopups) => {
+        if (Array.isArray(cloudTopups)) {
+            const prevPending = (adminTopups || []).filter(t => t.status === 'pending').length;
+            adminTopups = cloudTopups;
+            localStorage.setItem('unique_topup_requests', JSON.stringify(cloudTopups));
+            renderTopupsTable();
+            renderDashboardOverview();
+
+            const newPending = adminTopups.filter(t => t.status === 'pending').length;
+            if (newPending > prevPending) {
+                showToast(`🔔 มีคำขอเติมเงินใหม่รอตรวจสอบ! (${newPending} รายการ)`, 'info');
+                try {
+                    const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
+                    audio.volume = 0.6;
+                    audio.play().catch(() => {});
+                } catch(e) {}
+            }
+        }
+    });
+
+    // 3. Live Sync Orders
+    fbOnData('unique_all_orders', (cloudOrders) => {
+        if (Array.isArray(cloudOrders)) {
+            const prevCount = (adminAllOrders || []).length;
+            adminAllOrders = cloudOrders;
+            localStorage.setItem('unique_all_orders', JSON.stringify(cloudOrders));
+            renderOrdersTable();
+            renderDashboardOverview();
+
+            if (cloudOrders.length > prevCount) {
+                showToast(`🛒 มีออเดอร์คำสั่งซื้อใหม่เข้ามา!`, 'success');
+            }
+        }
+    });
+
+    // 4. Live Sync Products
+    fbOnData('unique_products', (cloudProducts) => {
+        if (Array.isArray(cloudProducts) && cloudProducts.length > 0) {
+            adminProducts = cloudProducts;
+            localStorage.setItem('unique_products', JSON.stringify(cloudProducts));
+            renderProductsTable();
+            renderDashboardOverview();
+        }
+    });
+
+    // 5. Live Sync Store Settings
+    fbOnData('unique_store_settings', (cloudSettings) => {
+        if (cloudSettings) {
+            adminStoreSettings = cloudSettings;
+            localStorage.setItem('unique_store_settings', JSON.stringify(cloudSettings));
+            initStoreSettingsInputs();
+        }
+    });
+
+    // 6. Live Sync Payment Settings
+    fbOnData('unique_payment_settings', (cloudPay) => {
+        if (cloudPay) {
+            adminPaymentSettings = cloudPay;
+            localStorage.setItem('unique_payment_settings', JSON.stringify(cloudPay));
+            initPaymentSettingsInputs();
+        }
+    });
+
+    updateFirebaseStatusUI();
+}
+
+function updateFirebaseStatusUI() {
+    const badge = document.getElementById('adminFirebaseStatusBadge');
+    const input = document.getElementById('adminFirebaseConfigInput');
+
+    const ready = typeof isFirebaseReady === 'function' && isFirebaseReady();
+
+    if (badge) {
+        if (ready) {
+            badge.style.background = 'rgba(0, 240, 255, 0.15)';
+            badge.style.color = '#00f0ff';
+            badge.style.border = '1px solid rgba(0, 240, 255, 0.4)';
+            badge.innerHTML = '<i class="fa-solid fa-circle-check"></i> Real-time Active (Firebase)';
+        } else {
+            badge.style.background = 'rgba(255, 153, 0, 0.15)';
+            badge.style.color = '#ffca28';
+            badge.style.border = '1px solid rgba(255, 153, 0, 0.4)';
+            badge.innerHTML = '<i class="fa-solid fa-bolt"></i> ใช้งาน Upstash Redis สำรอง';
+        }
+    }
+
+    if (input && !input.value) {
+        try {
+            const saved = localStorage.getItem('unique_firebase_config');
+            if (saved) {
+                input.value = JSON.stringify(JSON.parse(saved), null, 2);
+            } else if (typeof activeFirebaseConfig !== 'undefined' && activeFirebaseConfig) {
+                input.value = JSON.stringify(activeFirebaseConfig, null, 2);
+            }
+        } catch(e) {}
+    }
+}
+
+function saveAdminFirebaseConfig() {
+    const input = document.getElementById('adminFirebaseConfigInput');
+    if (!input || !input.value.trim()) {
+        showToast('กรุณาวางค่า Firebase Config ก่อนกดบันทึก', 'error');
+        return;
+    }
+
+    let raw = input.value.trim();
+    let parsedConfig = null;
+
+    // รองรับทั้ง JSON format และ syntax JS: const firebaseConfig = { ... };
+    try {
+        if (raw.includes('{') && raw.includes('}')) {
+            const jsonPart = raw.slice(raw.indexOf('{'), raw.lastIndexOf('}') + 1);
+            // แปลง key แบบ unquoted เช่น apiKey: "..." เป็น "apiKey": "..."
+            const cleaned = jsonPart
+                .replace(/([{,]\s*)([a-zA-Z0-9_]+)\s*:/g, '$1"$2":')
+                .replace(/'/g, '"')
+                .replace(/,\s*([}\]])/g, '$1');
+            parsedConfig = JSON.parse(cleaned);
+        } else {
+            parsedConfig = JSON.parse(raw);
+        }
+    } catch(err) {
+        try {
+            // Fallback: evaluate object literal safely
+            const fn = new Function(`return (${raw.replace(/const\s+firebaseConfig\s*=\s*/, '').replace(/;\s*$/, '')});`);
+            parsedConfig = fn();
+        } catch(e2) {
+            showToast('รูปแบบ Firebase Config ไม่ถูกต้อง กรุณาตรวจสอบอีกครั้ง', 'error');
+            return;
+        }
+    }
+
+    if (!parsedConfig || !parsedConfig.databaseURL || !parsedConfig.apiKey) {
+        showToast('ข้อมูล Config ไม่ครบถ้วน (ต้องมีอย่างน้อย apiKey และ databaseURL)', 'error');
+        return;
+    }
+
+    localStorage.setItem('unique_firebase_config', JSON.stringify(parsedConfig));
+
+    if (typeof initFirebaseApp === 'function') {
+        const ok = initFirebaseApp(parsedConfig);
+        if (ok) {
+            firebaseListenersAttached = false;
+            initAdminFirebaseListeners();
+            updateFirebaseStatusUI();
+            showToast('🎉 เชื่อมต่อ Firebase Realtime สำเร็จ! ระบบเป็น Real-time 100% แล้ว', 'success');
+
+            // อัปโหลดข้อมูลเริ่มต้นที่มีอยู่ขึ้น Firebase ทันที เพื่อไม่ให้ฐานข้อมูลว่าง
+            if (adminProducts && adminProducts.length > 0) saveCloudData('unique_products', adminProducts);
+            if (adminUsers && adminUsers.length > 0) saveCloudData('unique_users', adminUsers);
+            if (adminTopups && adminTopups.length > 0) saveCloudData('unique_topup_requests', adminTopups);
+            if (adminAllOrders && adminAllOrders.length > 0) saveCloudData('unique_all_orders', adminAllOrders);
+            if (adminPaymentSettings) saveCloudData('unique_payment_settings', adminPaymentSettings);
+            if (adminStoreSettings) saveCloudData('unique_store_settings', adminStoreSettings);
+            return;
+        }
+    }
+
+    showToast('⚠️ บันทึกแล้วแต่เชื่อมต่อไม่สำเร็จ กรุณาตรวจความถูกต้องของ Rules ใน Firebase', 'warning');
+    updateFirebaseStatusUI();
+}
+
+async function testAdminFirebaseConnection() {
+    if (typeof isFirebaseReady !== 'function' || !isFirebaseReady()) {
+        showToast('Firebase ยังไม่ได้เชื่อมต่อ (กำลังใช้ Upstash สำรองอยู่)', 'warning');
+        return;
+    }
+
+    const startTime = performance.now();
+    const testPayload = { ping: 'pong', timestamp: Date.now() };
+
+    showToast('กำลังทดสอบส่งข้อมูลไปยัง Firebase...', 'info');
+    const setOk = await fbSetData('_realtime_test', testPayload);
+    if (!setOk) {
+        showToast('❌ ส่งข้อมูลไม่สำเร็จ! ตรวจสอบ Rules ใน Firebase Realtime ว่าเปิด .read และ .write เป็น true หรือยัง', 'error');
+        return;
+    }
+
+    const readVal = await fbGetData('_realtime_test');
+    const elapsed = Math.round(performance.now() - startTime);
+
+    if (readVal && readVal.ping === 'pong') {
+        showToast(`⚡ เชื่อมต่อ Real-time สำเร็จ 100%! ความเร็ว: ${elapsed}ms`, 'success');
+    } else {
+        showToast('⚠️ เขียนสำเร็จแต่อ่านกลับไม่ได้ กรุณาตรวจสอบ Rules ใน Firebase', 'warning');
+    }
+}
+
+function resetAdminFirebaseConfig() {
+    if (confirm('คุณต้องการล้างการตั้งค่า Firebase และกลับไปใช้ระบบสำรองใช่หรือไม่?')) {
+        localStorage.removeItem('unique_firebase_config');
+        showToast('ล้างการตั้งค่า Firebase แล้ว กำลังรีเฟรชหน้า...', 'info');
+        setTimeout(() => location.reload(), 1000);
+    }
+}
+
+// 2.5-second live background polling (active as fallback when Firebase is offline)
 let lastUsersJsonCache = '';
 let lastTopupsJsonCache = '';
 let lastOrdersJsonCache = '';
 let prevPendingCount = 0;
 
 setInterval(async () => {
+    // If Firebase is active and listeners are handling real-time, skip polling to save bandwidth
+    if (typeof isFirebaseReady === 'function' && isFirebaseReady() && firebaseListenersAttached) {
+        return;
+    }
+
     try {
         // 1. Live Sync Users
         const cloudUsers = await fetchCloudData('unique_users');
@@ -1353,4 +1614,6 @@ setInterval(async () => {
 // Initialize
 document.addEventListener('DOMContentLoaded', () => {
     checkAdminAuth();
+    initAdminFirebaseListeners();
+    updateFirebaseStatusUI();
 });

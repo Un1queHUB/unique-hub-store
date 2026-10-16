@@ -83,13 +83,23 @@ const DEFAULT_PRODUCTS = [
 let products = [];
 let currentFilter = 'all';
 
-// ================= CLOUD DATABASE SYNC SYSTEM ================= //
+// ================= CLOUD DATABASE SYNC SYSTEM (FIREBASE REALTIME + UPSTASH FALLBACK) ================= //
 const DIRECT_UPSTASH_URL = 'https://upright-mite-232089.upstash.io';
 const DIRECT_UPSTASH_TOKEN = 'gQAAAAAAA4qZAQIgcDEyMDA3ODI0NWEyYTg0MGIzOTdmZjJmY2ZmMjY1NjM5Mg';
 const CLOUD_DB_API = '/api/db';
 
 async function fetchCloudData(key) {
-    // 1. Direct Upstash REST via query param ?_token (CORS friendly, works on file://, localhost, Vercel, Brave Shields)
+    // 1. Try Firebase Realtime Database first (Sub-100ms)
+    if (typeof isFirebaseReady === 'function' && isFirebaseReady()) {
+        try {
+            const fbVal = await fbGetData(key);
+            if (fbVal !== null && fbVal !== undefined) return fbVal;
+        } catch (e) {
+            console.warn('[App] Firebase GET fallback to Upstash:', e);
+        }
+    }
+
+    // 2. Direct Upstash REST via query param ?_token (CORS friendly, works on file://, localhost, Vercel, Brave Shields)
     try {
         const url = `${DIRECT_UPSTASH_URL}/get/${encodeURIComponent(key)}?_token=${DIRECT_UPSTASH_TOKEN}&_t=${Date.now()}`;
         const res = await fetch(url, { method: 'GET', mode: 'cors', cache: 'no-store' });
@@ -107,7 +117,7 @@ async function fetchCloudData(key) {
         console.warn('Direct Upstash GET failed, trying fallback:', e);
     }
 
-    // 2. Fallback to /api/db proxy if running on Vercel
+    // 3. Fallback to /api/db proxy if running on Vercel
     if (window.location.protocol.startsWith('http')) {
         try {
             const res = await fetch(`${CLOUD_DB_API}?key=${encodeURIComponent(key)}&_t=${Date.now()}`, { cache: 'no-store' });
@@ -122,9 +132,19 @@ async function fetchCloudData(key) {
 }
 
 async function saveCloudData(key, data) {
-    const stringData = typeof data === 'string' ? data : JSON.stringify(data);
+    let firebaseSuccess = false;
 
-    // 1. Direct Upstash REST via query param ?_token with text/plain (CORS safelisted)
+    // 1. Save to Firebase Realtime Database
+    if (typeof isFirebaseReady === 'function' && isFirebaseReady()) {
+        try {
+            firebaseSuccess = await fbSetData(key, data);
+        } catch (e) {
+            console.warn('[App] Firebase SET failed, trying Upstash:', e);
+        }
+    }
+
+    // 2. Also save to Upstash REST as backup/sync
+    const stringData = typeof data === 'string' ? data : JSON.stringify(data);
     try {
         const url = `${DIRECT_UPSTASH_URL}/set/${encodeURIComponent(key)}?_token=${DIRECT_UPSTASH_TOKEN}`;
         const res = await fetch(url, {
@@ -138,7 +158,7 @@ async function saveCloudData(key, data) {
         console.warn('Direct Upstash POST failed, trying fallback:', e);
     }
 
-    // 2. Fallback to /api/db proxy
+    // 3. Fallback to /api/db proxy
     if (window.location.protocol.startsWith('http')) {
         try {
             const res = await fetch(CLOUD_DB_API, {
@@ -150,7 +170,7 @@ async function saveCloudData(key, data) {
         } catch (e) {}
     }
 
-    return false;
+    return firebaseSuccess;
 }
 
 // Payment Settings (Owner's Official Accounts)
@@ -623,7 +643,7 @@ function openPurchaseModal(productId) {
     openModal('purchaseModal');
 }
 
-function executePurchase(productId) {
+async function executePurchase(productId) {
     if (!currentUser) {
         showToast('กรุณาเข้าสู่ระบบก่อน', 'error');
         openModal('loginModal');
@@ -663,17 +683,26 @@ function executePurchase(productId) {
     if (!currentUser.history) currentUser.history = [];
     currentUser.history.unshift(orderRecord);
 
-    // Save
+    // Save products and user session
     localStorage.setItem('unique_products', JSON.stringify(products));
     saveCloudData('unique_products', products);
-    saveUserSessionAndDb();
+    await saveUserSessionAndDb();
 
-    // Log globally for backoffice
+    // Log globally for backoffice (Safe merge with cloud database)
     try {
-        let allOrders = JSON.parse(localStorage.getItem('unique_all_orders') || '[]');
-        allOrders.unshift(orderRecord);
+        let allOrders = await fetchCloudData('unique_all_orders');
+        if (!Array.isArray(allOrders)) {
+            try {
+                allOrders = JSON.parse(localStorage.getItem('unique_all_orders') || '[]');
+            } catch(e) {
+                allOrders = [];
+            }
+        }
+        if (!allOrders.some(o => o.id === orderRecord.id)) {
+            allOrders.unshift(orderRecord);
+        }
         localStorage.setItem('unique_all_orders', JSON.stringify(allOrders));
-        saveCloudData('unique_all_orders', allOrders);
+        await saveCloudData('unique_all_orders', allOrders);
     } catch (e) {}
 
     closeModal('purchaseModal');
@@ -1332,9 +1361,86 @@ async function loadStoreSettings() {
     });
 }
 
-// Background Real-Time Auto Sync (Every 2.5 seconds)
+// ================= FIREBASE REALTIME CLIENT LISTENERS ================= //
+let clientFirebaseListenersAttached = false;
+
+function initClientFirebaseListeners() {
+    if (clientFirebaseListenersAttached) return;
+    if (typeof isFirebaseReady !== 'function' || !isFirebaseReady()) return;
+
+    clientFirebaseListenersAttached = true;
+    console.log('🔥 [App] เปิดใช้งาน Real-time Listeners (Firebase)');
+
+    // 1. Live Sync Products & Stock
+    fbOnData('unique_products', (cloudProducts) => {
+        if (Array.isArray(cloudProducts) && cloudProducts.length > 0) {
+            const raw = JSON.stringify(cloudProducts);
+            const currentRaw = JSON.stringify(products);
+            if (raw !== currentRaw) {
+                products = cloudProducts;
+                localStorage.setItem('unique_products', raw);
+                renderProducts();
+                updateAuthUI();
+            }
+        }
+    });
+
+    // 2. Live Sync Users (Current User Balance & Ban)
+    fbOnData('unique_users', (cloudUsers) => {
+        if (Array.isArray(cloudUsers)) {
+            users = cloudUsers;
+            localStorage.setItem('unique_users', JSON.stringify(users));
+            if (currentUser) {
+                const freshMe = users.find(u => u.username.toLowerCase() === currentUser.username.toLowerCase());
+                if (freshMe) {
+                    if (freshMe.banned) {
+                        userLogout();
+                        showToast('❌ บัญชีของคุณถูกระงับการใช้งานโดยผู้ดูแลระบบ', 'error');
+                        return;
+                    }
+                    if (freshMe.balance !== currentUser.balance) {
+                        const diff = freshMe.balance - currentUser.balance;
+                        currentUser.balance = freshMe.balance;
+                        currentUser.history = freshMe.history || currentUser.history;
+                        localStorage.setItem('unique_session', JSON.stringify(currentUser));
+                        updateAuthUI();
+                        if (diff > 0) {
+                            playSound('win');
+                            showToast(`🎉 แอดมินอนุมัติยอดเงิน ฿${diff.toFixed(2)} เข้ากระเป๋าของคุณแล้ว! ยอดเงินคงเหลือ: ฿${freshMe.balance.toFixed(2)}`, 'success');
+                        }
+                    }
+                }
+            }
+        }
+    });
+
+    // 3. Live Sync Store Settings (Announcement & Discord)
+    fbOnData('unique_store_settings', (cloudStore) => {
+        if (cloudStore) {
+            storeSettings = cloudStore;
+            localStorage.setItem('unique_store_settings', JSON.stringify(storeSettings));
+            applyStoreSettings(cloudStore);
+        }
+    });
+
+    // 4. Live Sync Payment Settings
+    fbOnData('unique_payment_settings', (cloudPay) => {
+        if (cloudPay) {
+            paymentSettings = cloudPay;
+            localStorage.setItem('unique_payment_settings', JSON.stringify(paymentSettings));
+            initPaymentUI();
+        }
+    });
+}
+
+// Background Real-Time Auto Sync (Every 2.5 seconds - Fallback when Firebase is not connected)
 let lastUserBalanceCache = null;
 setInterval(async () => {
+    // If Firebase is active and listeners are handling real-time, skip polling
+    if (typeof isFirebaseReady === 'function' && isFirebaseReady() && clientFirebaseListenersAttached) {
+        return;
+    }
+
     // 1. Sync current user status (live balance, ban)
     if (currentUser) {
         try {
@@ -1385,6 +1491,7 @@ setInterval(async () => {
 // ================= INITIALIZATION ================= //
 
 document.addEventListener('DOMContentLoaded', async () => {
+    initClientFirebaseListeners();
     updateAuthUI();
     loadProducts();
     loadPaymentSettings();
