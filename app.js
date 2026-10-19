@@ -1238,8 +1238,8 @@ async function processAutoSlipPayment() {
             } else {
                 throw new Error((data && data.message) || 'การตรวจสอบสลิปไม่ผ่าน');
             }
-        } else if (apiRes && !apiRes.ok && apiRes.status !== 404) {
-            // Server returned explicit validation error (e.g., duplicate slip 400)
+        } else if (apiRes && !apiRes.ok) {
+            // Server returned explicit validation error from SlipOK or rule check
             let errMsg = 'ตรวจสอบสลิปไม่สำเร็จ';
             try {
                 const errData = await apiRes.json();
@@ -1247,40 +1247,31 @@ async function processAutoSlipPayment() {
             } catch(e) {}
             throw new Error(errMsg);
         } else {
-            // 2. Direct Cloud Fallback (Works seamlessly when running index.html from local file://)
+            // Backend /api/slip is offline or not reachable (e.g. running from local file:// or static server)
+            // NEVER grant free credit automatically without SlipOK verification!
+            // Instead, submit as a pending topup request for admin to review manually.
             const slipKey = scannedSlipTransRef || (scannedSlipQRData ? scannedSlipQRData.slice(-32) : null);
             
-            if (slipKey) {
-                // Check duplicate slip on Upstash
-                let usedSlips = await fetchCloudData('unique_used_slips') || [];
-                if (!Array.isArray(usedSlips)) usedSlips = [];
-                if (usedSlips.includes(slipKey)) {
-                    throw new Error('❌ สลิปใบนี้เคยถูกใช้งานไปแล้วในระบบ! ไม่สามารถใช้ซ้ำได้');
-                }
-
-                // Add to used slips
-                usedSlips.push(slipKey);
-                if (usedSlips.length > 500) usedSlips.shift();
-                await saveCloudData('unique_used_slips', usedSlips);
-            }
-
-            // Record into topup history
             let allTopups = await fetchCloudData('unique_topup_requests') || [];
             if (!Array.isArray(allTopups)) allTopups = [];
             const reqRecord = {
                 id: 'TOP-' + Math.floor(100000 + Math.random() * 900000),
                 username: currentUser.username,
-                amount: addedCredit,
-                method: 'promptpay_auto',
+                amount: amount,
+                method: 'promptpay_manual',
                 transRef: transId,
-                status: 'approved',
+                status: 'pending',
+                note: 'ส่งตรวจแบบ Manual (เซิร์ฟเวอร์ตรวจสลิปออโต้ยังไม่พร้อมใช้งาน)',
                 createdAt: new Date().toLocaleString('th-TH')
             };
             allTopups.unshift(reqRecord);
             await saveCloudData('unique_topup_requests', allTopups);
             localStorage.setItem('unique_topup_requests', JSON.stringify(allTopups));
 
-            isSuccess = true;
+            clearSlipFile();
+            closeModal('topupModal');
+            showToast('⚠️ ระบบตรวจสลิปออโต้ยังไม่เปิดบนโฮสต์นี้ จึงส่งสลิปเป็นคำขอเติมเงิน "รอแอดมินอนุมัติ" เรียบร้อยแล้ว', 'info');
+            return;
         }
 
         if (isSuccess) {
